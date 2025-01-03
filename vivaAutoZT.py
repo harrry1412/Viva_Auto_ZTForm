@@ -30,9 +30,10 @@ def wait_for_user_action():
 
     return user_ready
 
-def process_additional_urls(original_ids, session):
+def process_additional_urls(filtered_data, session):
     base_url = "http://34.95.11.166/sales/document/document?id="
-    for original_id in original_ids:
+    for data in filtered_data:
+        original_id = data["OriginalID"]
         url2 = f"{base_url}{original_id}"
         response2 = session.get(url2)
         response2.raise_for_status()  # 检查目标页面请求是否成功
@@ -43,16 +44,16 @@ def process_additional_urls(original_ids, session):
             data_content_raw = match_data.group(1)
             data_content = json.loads(data_content_raw)  # 转换为 Python 数据结构
 
-            # 打印 data 的 items 中的 DocumentID, VendorPLU, Qty, Qty_OH 字段
-            if "items" in data_content and isinstance(data_content["items"], list):
-                print(f"数据来自 URL: {url2}")
-                for item in data_content["items"]:
-                    print({
-                        "DocumentID": item.get("DocumentID", "无此字段"),
-                        "VendorPLU": item.get("VendorPLU", "无此字段"),
-                        "Qty": item.get("Qty", "无此字段"),
-                        "Qty_OH": item.get("Qty_OH", "无此字段")
-                    })
+            # 获取 PhoneCell, PhoneHome, PhoneOffice
+            phone_data = {
+                "PhoneCell": data_content.get("PhoneCell", "无此字段"),
+                "PhoneHome": data_content.get("PhoneHome", "无此字段"),
+                "PhoneOffice": data_content.get("PhoneOffice", "无此字段")
+            }
+
+            # 打印整合后的数据
+            combined_data = {**data, **phone_data}
+            print("整合数据:", combined_data)
 
 def login_and_extract_data(url1, login_url, target_date):
     try:
@@ -101,13 +102,8 @@ def login_and_extract_data(url1, login_url, target_date):
                 and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S").date() == target_date
             ]
 
-            # 打印过滤后的数据
-            for data in filtered_data:
-                print("过滤后的数据:", data)
-
             # 处理生成的新 URL 并提取数据
-            original_ids = [data["OriginalID"] for data in filtered_data]
-            process_additional_urls(original_ids, session)
+            process_additional_urls(filtered_data, session)
 
         # 关闭浏览器
         driver.quit()
@@ -120,6 +116,6 @@ login_url = "http://34.95.11.166/sales/account/login"
 url1 = "http://34.95.11.166/sales/document/index?page=1"
 
 # 设置目标日期
-target_date = datetime.strptime("2025-01-02", "%Y-%m-%d").date()
+target_date = datetime.strptime("2025-01-03", "%Y-%m-%d").date()
 
 login_and_extract_data(url1, login_url, target_date)
