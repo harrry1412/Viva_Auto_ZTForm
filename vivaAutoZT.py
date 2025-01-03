@@ -60,6 +60,7 @@ def process_additional_urls(filtered_data, session):
             for item in items:
                 item_data = {
                     "DocumentID": item.get("DocumentID", "无此字段"),
+                    "VendorName": item.get("VendorName", "无此字段"),
                     "VendorPLU": item.get("VendorPLU", "无此字段"),
                     "Qty": item.get("Qty", "无此字段"),
                     "Qty_OH": item.get("Qty_OH", "无此字段")
