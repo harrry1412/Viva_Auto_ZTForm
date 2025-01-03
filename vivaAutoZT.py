@@ -53,7 +53,10 @@ def process_additional_urls(filtered_data, session):
                     "Qty": item.get("Qty", "无此字段"),
                     "Qty_OH": item.get("Qty_OH", "无此字段")
                 }
-                print("从 URL 提取的数据:", item_data)
+
+                # 打印整合后的数据
+                combined_data = {**data, **item_data}
+                print("整合数据:", combined_data)
 
 def login_and_extract_data(url1, login_url, target_date):
     try:
@@ -116,6 +119,6 @@ login_url = "http://34.95.11.166/sales/account/login"
 url1 = "http://34.95.11.166/sales/document/index?page=1"
 
 # 设置目标日期
-target_date = datetime.strptime("2025-01-03", "%Y-%m-%d").date()
+target_date = datetime.strptime("2025-01-02", "%Y-%m-%d").date()
 
 login_and_extract_data(url1, login_url, target_date)
