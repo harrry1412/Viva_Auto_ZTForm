@@ -86,14 +86,27 @@ def login_and_extract_data(url1, login_url, target_date):
             datalist_content_raw = match_datalist.group(1)
             datalist_content = json.loads(datalist_content_raw)  # 转换为 Python 数据结构
 
-            # 找到 finished 为 0 且 Created 在 target_date 及之后的元素的 OriginalID
-            original_ids = [
-                item.get("OriginalID")
+            # 找到 finished 为 0 且 Created 等于 target_date 的元素，并提取相关字段
+            filtered_data = [
+                {
+                    "OriginalID": item.get("OriginalID"),
+                    "UserName": item.get("UserName", "无此字段"),
+                    "FirstName": item.get("FirstName", "无此字段"),
+                    "LastName": item.get("LastName", "无此字段"),
+                    "Number": item.get("Number", "无此字段")
+                }
                 for item in datalist_content
-                if item.get("finished") == 0 and "Created" in item and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S") >= target_date
+                if item.get("finished") == 0
+                and "Created" in item
+                and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S").date() == target_date
             ]
 
+            # 打印过滤后的数据
+            for data in filtered_data:
+                print("过滤后的数据:", data)
+
             # 处理生成的新 URL 并提取数据
+            original_ids = [data["OriginalID"] for data in filtered_data]
             process_additional_urls(original_ids, session)
 
         # 关闭浏览器
@@ -107,6 +120,6 @@ login_url = "http://34.95.11.166/sales/account/login"
 url1 = "http://34.95.11.166/sales/document/index?page=1"
 
 # 设置目标日期
-target_date = datetime.strptime("2025-01-03", "%Y-%m-%d")
+target_date = datetime.strptime("2025-01-02", "%Y-%m-%d").date()
 
 login_and_extract_data(url1, login_url, target_date)
