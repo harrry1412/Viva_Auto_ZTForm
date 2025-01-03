@@ -44,20 +44,16 @@ def process_additional_urls(filtered_data, session):
             data_content_raw = match_data.group(1)
             data_content = json.loads(data_content_raw)  # 转换为 Python 数据结构
 
-            # 获取 PhoneCell, PhoneHome, PhoneOffice
-            phone_data = {
-                "PhoneCell": data_content.get("PhoneCell", "无此字段"),
-                "PhoneHome": data_content.get("PhoneHome", "无此字段"),
-                "PhoneOffice": data_content.get("PhoneOffice", "无此字段")
-            }
-
-            # 打印整合后的数据
-            combined_data = {**data, **phone_data}
-            print("整合数据:", combined_data)
-
-            # 打印 URL 和数据的关联信息
-            print(f"生成的 URL: {url2}")
-            print(f"URL 数据内容: {combined_data}")
+            # 获取 items 数组中的数据
+            items = data_content.get("items", [])
+            for item in items:
+                item_data = {
+                    "DocumentID": item.get("DocumentID", "无此字段"),
+                    "VendorPLU": item.get("VendorPLU", "无此字段"),
+                    "Qty": item.get("Qty", "无此字段"),
+                    "Qty_OH": item.get("Qty_OH", "无此字段")
+                }
+                print("从 URL 提取的数据:", item_data)
 
 def login_and_extract_data(url1, login_url, target_date):
     try:
@@ -120,6 +116,6 @@ login_url = "http://34.95.11.166/sales/account/login"
 url1 = "http://34.95.11.166/sales/document/index?page=1"
 
 # 设置目标日期
-target_date = datetime.strptime("2025-01-02", "%Y-%m-%d").date()
+target_date = datetime.strptime("2025-01-03", "%Y-%m-%d").date()
 
 login_and_extract_data(url1, login_url, target_date)
