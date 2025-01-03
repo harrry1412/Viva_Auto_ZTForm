@@ -75,7 +75,7 @@ def process_additional_urls(filtered_data, session):
                 "",  # 供货商
                 "",  # 数量
                 f"{data['FirstName']} {data['LastName']}",  # 顾客姓名
-                phone_combined,  # 电话
+                f"'{phone_combined}'",  # 电话，确保作为字符串处理
                 "",  # 家具自提
                 "",  # 留言
                 "",  # 货期
