@@ -155,7 +155,7 @@ def login_and_extract_data(url1, login_url, target_date, include_stock_status=Tr
                     "Number": item.get("Number", "无此字段")
                 }
                 for item in datalist_content
-                if (finished_filter is None or item.get("finished") == finished_filter)
+                if (finished_filter not in [0, 1] or item.get("finished") == finished_filter)
                 and "Created" in item
                 and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S").date() == target_date
             ]
