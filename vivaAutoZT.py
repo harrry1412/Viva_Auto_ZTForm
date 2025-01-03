@@ -39,7 +39,7 @@ def write_to_csv(data_rows, filename="output.csv"):
         for row in data_rows:
             writer.writerow(row)
 
-def process_additional_urls(filtered_data, session, include_stock_status):
+def process_additional_urls(filtered_data, session, include_stock_status, skip_negative_qty):
     base_url = "http://34.95.11.166/sales/document/document?id="
     data_rows = []
 
@@ -57,6 +57,14 @@ def process_additional_urls(filtered_data, session, include_stock_status):
 
             # 获取 items 数组中的数据
             items = data_content.get("items", [])
+
+            if skip_negative_qty:
+                items = [item for item in items if float(item.get("Qty", 0)) >= 0]
+
+            # 如果所有 items 的 Qty 都被过滤，则跳过整合数据
+            if skip_negative_qty and not items:
+                continue
+
             phone_numbers = [
                 data_content.get("PhoneCell", ""),
                 data_content.get("PhoneHome", ""),
@@ -113,7 +121,7 @@ def process_additional_urls(filtered_data, session, include_stock_status):
 
     write_to_csv(data_rows)
 
-def login_and_extract_data(url1, login_url, target_date, include_stock_status=True, finished_filter=None):
+def login_and_extract_data(url1, login_url, target_date, include_stock_status=True, finished_filter=None, skip_negative_qty=True):
     try:
         # 使用 Selenium 打开浏览器窗口
         driver = webdriver.Chrome()  # 请确保已安装 ChromeDriver 并配置在 PATH 中
@@ -161,7 +169,7 @@ def login_and_extract_data(url1, login_url, target_date, include_stock_status=Tr
             ]
 
             # 处理生成的新 URL 并提取数据
-            process_additional_urls(filtered_data, session, include_stock_status)
+            process_additional_urls(filtered_data, session, include_stock_status, skip_negative_qty)
 
         # 关闭浏览器
         driver.quit()
@@ -182,4 +190,7 @@ include_stock_status = True
 # 控制是否筛选 finished
 finished_filter = 0  # 设为 1 只获取 finished 为 1 的，设为 0 只获取 finished 为 0 的，设为 None 获取全部
 
-login_and_extract_data(url1, login_url, target_date, include_stock_status, finished_filter)
+# 控制是否跳过 Qty 为负数的 items
+skip_negative_qty = True
+
+login_and_extract_data(url1, login_url, target_date, include_stock_status, finished_filter, skip_negative_qty)
