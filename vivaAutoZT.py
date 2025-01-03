@@ -101,8 +101,8 @@ def process_additional_urls(filtered_data, session):
                     "",  # 电话
                     "",  # 家具自提
                     "",  # 留言
-                    stock_status,  # 货期
-                    ""  # 订货
+                    "",  # 货期
+                    stock_status  # 订货
                 ]
                 data_rows.append(item_row)
 
