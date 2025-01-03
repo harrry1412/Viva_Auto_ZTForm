@@ -87,7 +87,9 @@ def process_additional_urls(filtered_data, session, include_stock_status):
             for item in items:
                 qty = float(item.get("Qty", 0))
                 qty_oh = float(item.get("Qty_OH", 0))
-                stock_status = "现货" if qty_oh - qty >= 1 else "需要订货" if include_stock_status else ""
+                stock_status = ""
+                if include_stock_status:
+                    stock_status = "现货" if qty_oh - qty >= 1 else "需要订货"
 
                 item_row = [
                     "",  # 空A
