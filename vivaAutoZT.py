@@ -33,7 +33,7 @@ def wait_for_user_action():
 
 def write_to_csv(data_rows, filename="output.csv"):
     headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
-    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+    with open(filename, mode="w", newline="", encoding="utf-8-sig") as file:  # 使用 utf-8-sig 编码
         writer = csv.writer(file)
         writer.writerow(headers)
         for row in data_rows:
