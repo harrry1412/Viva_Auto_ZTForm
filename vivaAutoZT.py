@@ -10,6 +10,7 @@ import re
 import time
 import json
 from datetime import datetime
+import csv
 
 def wait_for_user_action():
     """弹出一个Tkinter窗口，等待用户点击继续按钮"""
@@ -30,8 +31,18 @@ def wait_for_user_action():
 
     return user_ready
 
+def write_to_csv(data_rows, filename="output.csv"):
+    headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(headers)
+        for row in data_rows:
+            writer.writerow(row)
+
 def process_additional_urls(filtered_data, session):
     base_url = "http://34.95.11.166/sales/document/document?id="
+    data_rows = []
+
     for data in filtered_data:
         original_id = data["OriginalID"]
         url2 = f"{base_url}{original_id}"
@@ -46,26 +57,59 @@ def process_additional_urls(filtered_data, session):
 
             # 获取 items 数组中的数据
             items = data_content.get("items", [])
-            phone_data = {
-                "PhoneCell": data_content.get("PhoneCell", "无此字段"),
-                "PhoneHome": data_content.get("PhoneHome", "无此字段"),
-                "PhoneOffice": data_content.get("PhoneOffice", "无此字段")
-            }
+            phone_numbers = [
+                data_content.get("PhoneCell", ""),
+                data_content.get("PhoneHome", ""),
+                data_content.get("PhoneOffice", "")
+            ]
+            phone_numbers = list(filter(None, phone_numbers))  # 移除空值
+            phone_combined = "/".join(phone_numbers) if phone_numbers else ""
 
-            # 打印 URL1 提取的数据
-            combined_data = {**data, **phone_data}
-            print("整合数据:", combined_data)
+            # 整合数据作为第一行
+            data_row = [
+                "",  # 空A
+                data["UserName"],  # 销售
+                data["Number"],  # 单号
+                "",  # 空D
+                "",  # 产品型号
+                "",  # 供货商
+                "",  # 数量
+                f"{data['FirstName']} {data['LastName']}",  # 顾客姓名
+                phone_combined,  # 电话
+                "",  # 家具自提
+                "",  # 留言
+                "",  # 货期
+                ""  # 订货
+            ]
+            data_rows.append(data_row)
 
-            # 打印 URL2 提取的 items 数据
+            # 添加 items 内容
             for item in items:
-                item_data = {
-                    "DocumentID": item.get("DocumentID", "无此字段"),
-                    "VendorName": item.get("VendorName", "无此字段"),
-                    "VendorPLU": item.get("VendorPLU", "无此字段"),
-                    "Qty": item.get("Qty", "无此字段"),
-                    "Qty_OH": item.get("Qty_OH", "无此字段")
-                }
-                print("对应的ITEMS：", item_data)
+                qty = float(item.get("Qty", 0))
+                qty_oh = float(item.get("Qty_OH", 0))
+                stock_status = "现货" if qty_oh - qty >= 1 else "需要订货"
+
+                item_row = [
+                    "",  # 空A
+                    "",  # 销售
+                    "",  # 单号
+                    "",  # 空D
+                    item.get("VendorPLU", ""),  # 产品型号
+                    item.get("VendorName", ""),  # 供货商
+                    item.get("Qty", ""),  # 数量
+                    "",  # 顾客姓名
+                    "",  # 电话
+                    "",  # 家具自提
+                    "",  # 留言
+                    stock_status,  # 货期
+                    ""  # 订货
+                ]
+                data_rows.append(item_row)
+
+            # 空一行
+            data_rows.append(["" for _ in range(13)])
+
+    write_to_csv(data_rows)
 
 def login_and_extract_data(url1, login_url, target_date):
     try:
