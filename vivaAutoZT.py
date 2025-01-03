@@ -113,7 +113,7 @@ def process_additional_urls(filtered_data, session, include_stock_status):
 
     write_to_csv(data_rows)
 
-def login_and_extract_data(url1, login_url, target_date, include_stock_status=True):
+def login_and_extract_data(url1, login_url, target_date, include_stock_status=True, finished_filter=None):
     try:
         # 使用 Selenium 打开浏览器窗口
         driver = webdriver.Chrome()  # 请确保已安装 ChromeDriver 并配置在 PATH 中
@@ -145,7 +145,7 @@ def login_and_extract_data(url1, login_url, target_date, include_stock_status=Tr
             datalist_content_raw = match_datalist.group(1)
             datalist_content = json.loads(datalist_content_raw)  # 转换为 Python 数据结构
 
-            # 找到 finished 为 0 且 Created 等于 target_date 的元素，并提取相关字段
+            # 根据 finished_filter 过滤数据
             filtered_data = [
                 {
                     "OriginalID": item.get("OriginalID"),
@@ -155,7 +155,7 @@ def login_and_extract_data(url1, login_url, target_date, include_stock_status=Tr
                     "Number": item.get("Number", "无此字段")
                 }
                 for item in datalist_content
-                if item.get("finished") == 0
+                if (finished_filter is None or item.get("finished") == finished_filter)
                 and "Created" in item
                 and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S").date() == target_date
             ]
@@ -179,4 +179,7 @@ target_date = datetime.strptime("2025-01-03", "%Y-%m-%d").date()
 # 控制是否填写订货列
 include_stock_status = True
 
-login_and_extract_data(url1, login_url, target_date, include_stock_status)
+# 控制是否筛选 finished
+finished_filter = 0  # 设为 1 只获取 finished 为 1 的，设为 0 只获取 finished 为 0 的，设为 None 获取全部
+
+login_and_extract_data(url1, login_url, target_date, include_stock_status, finished_filter)
