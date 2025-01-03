@@ -55,6 +55,10 @@ def process_additional_urls(filtered_data, session):
             combined_data = {**data, **phone_data}
             print("整合数据:", combined_data)
 
+            # 打印 URL 和数据的关联信息
+            print(f"生成的 URL: {url2}")
+            print(f"URL 数据内容: {combined_data}")
+
 def login_and_extract_data(url1, login_url, target_date):
     try:
         # 使用 Selenium 打开浏览器窗口
@@ -116,6 +120,6 @@ login_url = "http://34.95.11.166/sales/account/login"
 url1 = "http://34.95.11.166/sales/document/index?page=1"
 
 # 设置目标日期
-target_date = datetime.strptime("2025-01-03", "%Y-%m-%d").date()
+target_date = datetime.strptime("2025-01-02", "%Y-%m-%d").date()
 
 login_and_extract_data(url1, login_url, target_date)
