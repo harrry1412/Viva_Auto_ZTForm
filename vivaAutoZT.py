@@ -46,6 +46,17 @@ def process_additional_urls(filtered_data, session):
 
             # 获取 items 数组中的数据
             items = data_content.get("items", [])
+            phone_data = {
+                "PhoneCell": data_content.get("PhoneCell", "无此字段"),
+                "PhoneHome": data_content.get("PhoneHome", "无此字段"),
+                "PhoneOffice": data_content.get("PhoneOffice", "无此字段")
+            }
+
+            # 打印 URL1 提取的数据
+            combined_data = {**data, **phone_data}
+            print("整合数据:", combined_data)
+
+            # 打印 URL2 提取的 items 数据
             for item in items:
                 item_data = {
                     "DocumentID": item.get("DocumentID", "无此字段"),
@@ -53,10 +64,7 @@ def process_additional_urls(filtered_data, session):
                     "Qty": item.get("Qty", "无此字段"),
                     "Qty_OH": item.get("Qty_OH", "无此字段")
                 }
-
-                # 打印整合后的数据
-                combined_data = {**data, **item_data}
-                print("整合数据:", combined_data)
+                print("对应的ITEMS：", item_data)
 
 def login_and_extract_data(url1, login_url, target_date):
     try:
@@ -119,6 +127,6 @@ login_url = "http://34.95.11.166/sales/account/login"
 url1 = "http://34.95.11.166/sales/document/index?page=1"
 
 # 设置目标日期
-target_date = datetime.strptime("2025-01-02", "%Y-%m-%d").date()
+target_date = datetime.strptime("2025-01-03", "%Y-%m-%d").date()
 
 login_and_extract_data(url1, login_url, target_date)
