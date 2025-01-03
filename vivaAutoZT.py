@@ -39,7 +39,7 @@ def write_to_csv(data_rows, filename="output.csv"):
         for row in data_rows:
             writer.writerow(row)
 
-def process_additional_urls(filtered_data, session):
+def process_additional_urls(filtered_data, session, include_stock_status):
     base_url = "http://34.95.11.166/sales/document/document?id="
     data_rows = []
 
@@ -87,7 +87,7 @@ def process_additional_urls(filtered_data, session):
             for item in items:
                 qty = float(item.get("Qty", 0))
                 qty_oh = float(item.get("Qty_OH", 0))
-                stock_status = "现货" if qty_oh - qty >= 1 else "需要订货"
+                stock_status = "现货" if qty_oh - qty >= 1 else "需要订货" if include_stock_status else ""
 
                 item_row = [
                     "",  # 空A
@@ -111,7 +111,7 @@ def process_additional_urls(filtered_data, session):
 
     write_to_csv(data_rows)
 
-def login_and_extract_data(url1, login_url, target_date):
+def login_and_extract_data(url1, login_url, target_date, include_stock_status=True):
     try:
         # 使用 Selenium 打开浏览器窗口
         driver = webdriver.Chrome()  # 请确保已安装 ChromeDriver 并配置在 PATH 中
@@ -159,7 +159,7 @@ def login_and_extract_data(url1, login_url, target_date):
             ]
 
             # 处理生成的新 URL 并提取数据
-            process_additional_urls(filtered_data, session)
+            process_additional_urls(filtered_data, session, include_stock_status)
 
         # 关闭浏览器
         driver.quit()
@@ -174,4 +174,7 @@ url1 = "http://34.95.11.166/sales/document/index?page=1"
 # 设置目标日期
 target_date = datetime.strptime("2025-01-03", "%Y-%m-%d").date()
 
-login_and_extract_data(url1, login_url, target_date)
+# 控制是否填写订货列
+include_stock_status = True
+
+login_and_extract_data(url1, login_url, target_date, include_stock_status)
