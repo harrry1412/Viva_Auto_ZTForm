@@ -10,7 +10,7 @@ import csv
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit, QFileDialog
 )
-from PyQt5.QtCore import QDate, Qt, QThread, pyqtSignal
+from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont
 import sys
 
@@ -109,27 +109,6 @@ def process_data(session, login_url, url1, target_date, include_stock_status, fi
 
     return data_rows
 
-class DataProcessingThread(QThread):
-    finished = pyqtSignal(list)
-    error = pyqtSignal(str)
-
-    def __init__(self, session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty):
-        super().__init__()
-        self.session = session
-        self.login_url = login_url
-        self.url1 = url1
-        self.target_date = target_date
-        self.include_stock_status = include_stock_status
-        self.finished_filter = finished_filter
-        self.skip_negative_qty = skip_negative_qty
-
-    def run(self):
-        try:
-            data_rows = process_data(self.session, self.login_url, self.url1, self.target_date, self.include_stock_status, self.finished_filter, self.skip_negative_qty)
-            self.finished.emit(data_rows)
-        except Exception as e:
-            self.error.emit(str(e))
-
 class DataExtractorApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -193,36 +172,15 @@ class DataExtractorApp(QWidget):
         skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
 
         session = requests.Session()
-
-        QMessageBox.information(self, "提示", "正在打开浏览器，请登录系统。")
-
-        self.thread = DataProcessingThread(session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty)
-        self.thread.finished.connect(self.on_processing_finished)
-        self.thread.error.connect(self.on_processing_error)
-
-        self.generating_msg = QMessageBox(self)
-        self.generating_msg.setWindowTitle("正在生成")
-        self.generating_msg.setText("正在生成，请耐心等待...")
-        self.generating_msg.setStandardButtons(QMessageBox.NoButton)
-        self.generating_msg.setWindowModality(Qt.ApplicationModal)
-        self.generating_msg.show()
-
-        self.thread.start()
-
-    def on_processing_finished(self, data_rows):
-        self.generating_msg.hide()
+        data_rows = process_data(session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty)
 
         if data_rows:
-            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", "Viva自提生成H.csv", "CSV文件 (*.csv)")
+            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", "Viva自提单生成H.csv", "CSV文件 (*.csv)")
             if file_path:
                 write_to_csv(data_rows, file_path)
                 QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {file_path}")
             else:
                 QMessageBox.warning(self, "取消", "用户取消了保存文件操作。")
-
-    def on_processing_error(self, error_message):
-        self.generating_msg.hide()
-        QMessageBox.critical(self, "错误", f"生成过程中发生错误: {error_message}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
