@@ -18,6 +18,8 @@ import os
 # 从配置文件加载配置
 CONFIG_FILENAME = "config.json"
 ICON_FILENAME = "app_icon.png"
+APP_TITLE = "数据提取工具"
+
 
 def load_config():
     """加载配置文件"""
@@ -142,7 +144,7 @@ class DataExtractorApp(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("数据提取工具")
+        self.setWindowTitle(APP_TITLE)
         self.setWindowIcon(QIcon(get_icon_path()))
 
         screen_size = QApplication.primaryScreen().size()
@@ -154,17 +156,17 @@ class DataExtractorApp(QWidget):
         self.setFont(font)
 
         self.login_url_input = QLineEdit(self.config.get("login_url", ""))
-        layout.addWidget(QLabel("登录 URL:"))
+        layout.addWidget(QLabel("登录页面 URL:"))
         layout.addWidget(self.login_url_input)
 
         self.url1_input = QLineEdit(self.config.get("url1", ""))
-        layout.addWidget(QLabel("数据 URL1:"))
+        layout.addWidget(QLabel("数据 URL:"))
         layout.addWidget(self.url1_input)
 
         self.target_date_input = QDateEdit()
         self.target_date_input.setCalendarPopup(True)
         self.target_date_input.setDate(QDate.currentDate())
-        layout.addWidget(QLabel("目标日期:"))
+        layout.addWidget(QLabel("要生成的日期:"))
         layout.addWidget(self.target_date_input)
 
         self.include_stock_status_input = QComboBox()
@@ -174,9 +176,9 @@ class DataExtractorApp(QWidget):
         layout.addWidget(self.include_stock_status_input)
 
         self.finished_filter_input = QComboBox()
-        self.finished_filter_input.addItems(["全部", "仅已完成 (1)", "仅未完成 (0)"])
+        self.finished_filter_input.addItems(["全部", "仅已标记完结的订单", "仅未标记完结的订单"])
         self.finished_filter_input.setCurrentIndex(0)  # 默认选择“全部”
-        layout.addWidget(QLabel("生成已完成还是未完成的订单:"))
+        layout.addWidget(QLabel("生成已标记完结还是未完结的订单:"))
         layout.addWidget(self.finished_filter_input)
 
         self.skip_negative_qty_input = QComboBox()
