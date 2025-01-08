@@ -6,7 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import re
 import json
 from datetime import datetime
-import csv
+from openpyxl import Workbook
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit, QFileDialog
 )
@@ -45,13 +45,38 @@ def get_icon_path():
     print(f"图标文件路径: {icon_path}, 存在: {os.path.exists(icon_path)}")
     return icon_path
 
-def write_to_csv(data_rows, filename):
+def write_to_excel(data_rows, filename):
     headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
-    with open(filename, mode="w", newline="", encoding="utf-8-sig") as file:
-        writer = csv.writer(file)
-        writer.writerow(headers)
-        for row in data_rows:
-            writer.writerow([f'="{value}"' if isinstance(value, str) and value.isdigit() and len(value) > 10 else str(value) for value in row])
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "数据提取"
+
+    # 写入表头
+    ws.append(headers)
+
+    # 写入数据行
+    for row in data_rows:
+        formatted_row = []
+        for i, value in enumerate(row):
+            if headers[i] == "数量":  # 如果是数量列，保持为数字
+                try:
+                    formatted_row.append(float(value) if '.' in str(value) else int(value))
+                except ValueError:
+                    formatted_row.append('')  # 如果转换失败，填入默认值0
+            else:
+                formatted_row.append(str(value))  # 其他列转为字符串
+        ws.append(formatted_row)
+
+    # 设置列宽（根据需要调整宽度）
+    column_widths = [10, 15, 20, 10, 30, 20, 10, 20, 20, 15, 15, 15, 15]
+    for i, width in enumerate(column_widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = width
+
+    # 保存文件
+    wb.save(filename)
+
+
+
 
 def process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty):
     driver = webdriver.Chrome()
@@ -219,14 +244,15 @@ class DataExtractorApp(QWidget):
         data_rows = process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty)
 
         if data_rows:
-            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", "Viva自提单生成H.csv", "CSV文件 (*.csv)")
-            if file_path:
-                write_to_csv(data_rows, file_path)
+            file_path = "//VIVA303-WORK/Viva店面共享/Viva自提单生成H.xlsx"
+            try:
+                write_to_excel(data_rows, file_path)
                 QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {file_path}")
-            else:
-                QMessageBox.warning(self, "取消", "用户取消了保存文件操作。")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"文件保存失败: {str(e)}")
         else:
             QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
+
 
     def show_about_dialog(self):
         QMessageBox.about(
