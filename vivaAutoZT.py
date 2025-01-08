@@ -141,17 +141,20 @@ class DataExtractorApp(QWidget):
         layout.addWidget(self.target_date_input)
 
         self.include_stock_status_input = QComboBox()
-        self.include_stock_status_input.addItems(["是", "否"])
-        layout.addWidget(QLabel("是否计算订货状态:"))
+        self.include_stock_status_input.addItems(["否", "是"])
+        self.include_stock_status_input.setCurrentIndex(0)  # 默认选择“否”
+        layout.addWidget(QLabel("是否生成订货列:"))
         layout.addWidget(self.include_stock_status_input)
 
         self.finished_filter_input = QComboBox()
         self.finished_filter_input.addItems(["全部", "仅已完成 (1)", "仅未完成 (0)"])
-        layout.addWidget(QLabel("筛选条件 (finished):"))
+        self.finished_filter_input.setCurrentIndex(0)  # 默认选择“全部”
+        layout.addWidget(QLabel("生成已完成还是未完成的订单:"))
         layout.addWidget(self.finished_filter_input)
 
         self.skip_negative_qty_input = QComboBox()
         self.skip_negative_qty_input.addItems(["是", "否"])
+        self.skip_negative_qty_input.setCurrentIndex(0)  # 默认选择“是”
         layout.addWidget(QLabel("跳过负库存记录:"))
         layout.addWidget(self.skip_negative_qty_input)
 
