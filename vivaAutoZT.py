@@ -18,7 +18,8 @@ import os
 # 从配置文件加载配置
 CONFIG_FILENAME = "config.json"
 ICON_FILENAME = "app_icon.png"
-APP_TITLE = "数据提取工具"
+APP_VERSION = 'V1.0.0'
+APP_TITLE = f'VIVA自提单自动生成工具 {APP_VERSION} - Designed by Harry'
 
 
 def load_config():
