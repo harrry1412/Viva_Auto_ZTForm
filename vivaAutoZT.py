@@ -10,7 +10,7 @@ import csv
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit, QFileDialog
 )
-from PyQt5.QtCore import QDate
+from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QFont
 import sys
 
@@ -41,7 +41,7 @@ def process_data(session, login_url, url1, target_date, include_stock_status, fi
     match_datalist = re.search(r"var\s+datalist\s*=\s*(\[.*?\]);", html_content1, re.DOTALL)
     if not match_datalist:
         QMessageBox.critical(None, "错误", "未找到 datalist 数据。")
-        return
+        return []
 
     datalist_content = json.loads(match_datalist.group(1))
     filtered_data = [
@@ -107,12 +107,7 @@ def process_data(session, login_url, url1, target_date, include_stock_status, fi
 
             data_rows.append(["" for _ in range(13)])
 
-    file_path, _ = QFileDialog.getSaveFileName(None, "保存文件", "Viva自提生成H.csv", "CSV文件 (*.csv)")
-    if file_path:
-        write_to_csv(data_rows, file_path)
-        QMessageBox.information(None, "完成", f"数据处理完成，文件已保存到: {file_path}")
-    else:
-        QMessageBox.warning(None, "取消", "用户取消了保存文件操作。")
+    return data_rows
 
 class DataExtractorApp(QWidget):
     def __init__(self):
@@ -169,7 +164,6 @@ class DataExtractorApp(QWidget):
         self.setLayout(layout)
 
     def on_generate_click(self):
-        QMessageBox.information(self, "提示", "正在生成，请耐心等待...")
         login_url = self.login_url_input.text()
         url1 = self.url1_input.text()
         target_date = self.target_date_input.date().toPyDate()
@@ -178,7 +172,30 @@ class DataExtractorApp(QWidget):
         skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
 
         session = requests.Session()
-        process_data(session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty)
+
+        # 弹出浏览器让用户登录
+        QMessageBox.information(self, "提示", "正在打开浏览器，请登录系统。")
+        data_rows = process_data(session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty)
+
+        # 显示正在生成的提示
+        generating_msg = QMessageBox(self)
+        generating_msg.setWindowTitle("正在生成")
+        generating_msg.setText("正在生成，请耐心等待...")
+        generating_msg.setStandardButtons(QMessageBox.NoButton)
+        generating_msg.setWindowModality(Qt.ApplicationModal)
+        generating_msg.show()
+
+        # 模拟生成完成
+        if data_rows:
+            generating_msg.hide()
+
+            # 弹出保存文件对话框
+            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", "Viva自提生成H.csv", "CSV文件 (*.csv)")
+            if file_path:
+                write_to_csv(data_rows, file_path)
+                QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {file_path}")
+            else:
+                QMessageBox.warning(self, "取消", "用户取消了保存文件操作。")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
