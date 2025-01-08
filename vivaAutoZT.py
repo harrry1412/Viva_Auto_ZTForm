@@ -22,7 +22,6 @@ ICON_FILENAME = "app_icon.png"
 APP_VERSION = 'V1.0.0'
 APP_TITLE = f'VIVA自提单自动生成工具 {APP_VERSION} - Designed by Harry'
 
-
 def load_config():
     """加载配置文件"""
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -74,9 +73,6 @@ def write_to_excel(data_rows, filename):
 
     # 保存文件
     wb.save(filename)
-
-
-
 
 def process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty):
     driver = webdriver.Chrome()
@@ -193,6 +189,10 @@ class DataExtractorApp(QWidget):
         font = QFont("Arial", 14)
         self.setFont(font)
 
+        self.output_filename_input = QLineEdit("Viva自提单生成H")
+        layout.addWidget(QLabel("输出文件名:"))
+        layout.addWidget(self.output_filename_input)
+
         self.login_url_input = QLineEdit(self.config.get("login_url", ""))
         layout.addWidget(QLabel("登录页面 URL:"))
         layout.addWidget(self.login_url_input)
@@ -240,19 +240,23 @@ class DataExtractorApp(QWidget):
         finished_filter = self.finished_filter_input.currentIndex() - 1
         skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
 
+        output_filename = self.output_filename_input.text().strip()
+        if not output_filename:
+            QMessageBox.warning(self, "警告", "输出文件名不能为空。")
+            return
+        output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
+
         session = requests.Session()
         data_rows = process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty)
 
         if data_rows:
-            file_path = "//VIVA303-WORK/Viva店面共享/Viva自提单生成H.xlsx"
             try:
-                write_to_excel(data_rows, file_path)
-                QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {file_path}")
+                write_to_excel(data_rows, output_filepath)
+                QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {output_filepath}")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"文件保存失败: {str(e)}")
         else:
             QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
-
 
     def show_about_dialog(self):
         QMessageBox.about(
@@ -263,7 +267,6 @@ class DataExtractorApp(QWidget):
             "All rights reserved.\n"
             "Unauthorized copying, modification, distribution, or use for commercial purposes is prohibited."
         )
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
