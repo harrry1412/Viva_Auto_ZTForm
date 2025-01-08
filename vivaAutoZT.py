@@ -25,8 +25,11 @@ def get_icon_path():
         base_path = sys._MEIPASS
     else:
         # 如果是直接运行
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, ICON_FILENAME)
+        base_path = os.path.dirname(os.path.abspath(__file__))  # 改为脚本文件所在目录
+    icon_path = os.path.join(base_path, ICON_FILENAME)
+    print(f"图标文件路径: {icon_path}, 存在: {os.path.exists(icon_path)}")
+    return icon_path
+
 
 def write_to_csv(data_rows, filename):
     headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
