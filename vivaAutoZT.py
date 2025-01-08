@@ -181,6 +181,8 @@ class DataExtractorApp(QWidget):
                 QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {file_path}")
             else:
                 QMessageBox.warning(self, "取消", "用户取消了保存文件操作。")
+        else:
+            QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
