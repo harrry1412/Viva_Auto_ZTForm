@@ -15,8 +15,19 @@ from PyQt5.QtGui import QFont, QIcon
 import sys
 import os
 
-# 图标文件名
+# 从配置文件加载配置
+CONFIG_FILENAME = "config.json"
 ICON_FILENAME = "app_icon.png"
+
+def load_config():
+    """加载配置文件"""
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(base_path, CONFIG_FILENAME)
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        raise FileNotFoundError(f"配置文件未找到: {config_path}")
 
 def get_icon_path():
     """获取图标路径，兼容直接运行和打包后的路径"""
@@ -25,11 +36,10 @@ def get_icon_path():
         base_path = sys._MEIPASS
     else:
         # 如果是直接运行
-        base_path = os.path.dirname(os.path.abspath(__file__))  # 改为脚本文件所在目录
+        base_path = os.path.dirname(os.path.abspath(__file__))
     icon_path = os.path.join(base_path, ICON_FILENAME)
     print(f"图标文件路径: {icon_path}, 存在: {os.path.exists(icon_path)}")
     return icon_path
-
 
 def write_to_csv(data_rows, filename):
     headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
@@ -39,7 +49,7 @@ def write_to_csv(data_rows, filename):
         for row in data_rows:
             writer.writerow(row)
 
-def process_data(session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty):
+def process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty):
     driver = webdriver.Chrome()
     driver.get(login_url)
     QMessageBox.information(None, "提示", "请在浏览器中完成登录后点击确定继续。")
@@ -75,7 +85,6 @@ def process_data(session, login_url, url1, target_date, include_stock_status, fi
         and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S").date() == target_date
     ]
 
-    base_url = "http://34.95.11.166/sales/document/document?id="
     data_rows = []
 
     for data in filtered_data:
@@ -129,6 +138,7 @@ def process_data(session, login_url, url1, target_date, include_stock_status, fi
 class DataExtractorApp(QWidget):
     def __init__(self):
         super().__init__()
+        self.config = load_config()
         self.init_ui()
 
     def init_ui(self):
@@ -143,11 +153,11 @@ class DataExtractorApp(QWidget):
         font = QFont("Arial", 14)
         self.setFont(font)
 
-        self.login_url_input = QLineEdit("http://34.95.11.166/sales/account/login")
+        self.login_url_input = QLineEdit(self.config.get("login_url", ""))
         layout.addWidget(QLabel("登录 URL:"))
         layout.addWidget(self.login_url_input)
 
-        self.url1_input = QLineEdit("http://34.95.11.166/sales/document/index?page=1")
+        self.url1_input = QLineEdit(self.config.get("url1", ""))
         layout.addWidget(QLabel("数据 URL1:"))
         layout.addWidget(self.url1_input)
 
@@ -184,21 +194,17 @@ class DataExtractorApp(QWidget):
     def on_generate_click(self):
         login_url = self.login_url_input.text()
         url1 = self.url1_input.text()
+        base_url = self.config.get("base_url", "")
         target_date = self.target_date_input.date().toPyDate()
         include_stock_status = self.include_stock_status_input.currentText() == "是"
         finished_filter = self.finished_filter_input.currentIndex() - 1
         skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
 
         session = requests.Session()
-        data_rows = process_data(session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty)
+        data_rows = process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty)
 
         if data_rows:
-            # 获取桌面路径
-            desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop') if os.name == 'nt' else os.path.join(os.path.expanduser("~"), "Desktop")
-            default_path = os.path.join(desktop, "Viva自提单生成H.csv")
-            
-            # 弹出文件浏览窗口
-            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", default_path, "CSV文件 (*.csv)")
+            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", "Viva自提单生成H.csv", "CSV文件 (*.csv)")
             if file_path:
                 write_to_csv(data_rows, file_path)
                 QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {file_path}")
