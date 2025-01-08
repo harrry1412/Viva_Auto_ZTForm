@@ -193,7 +193,12 @@ class DataExtractorApp(QWidget):
         data_rows = process_data(session, login_url, url1, target_date, include_stock_status, finished_filter, skip_negative_qty)
 
         if data_rows:
-            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", "Viva自提单生成H.csv", "CSV文件 (*.csv)")
+            # 获取桌面路径
+            desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop') if os.name == 'nt' else os.path.join(os.path.expanduser("~"), "Desktop")
+            default_path = os.path.join(desktop, "Viva自提单生成H.csv")
+            
+            # 弹出文件浏览窗口
+            file_path, _ = QFileDialog.getSaveFileName(self, "保存文件", default_path, "CSV文件 (*.csv)")
             if file_path:
                 write_to_csv(data_rows, file_path)
                 QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {file_path}")
