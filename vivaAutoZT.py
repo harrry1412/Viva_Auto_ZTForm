@@ -10,6 +10,7 @@ import csv
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit, QFileDialog
 )
+from PyQt5.QtWidgets import QToolButton, QHBoxLayout
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont, QIcon
 import sys
@@ -50,7 +51,7 @@ def write_to_csv(data_rows, filename):
         writer = csv.writer(file)
         writer.writerow(headers)
         for row in data_rows:
-            writer.writerow(row)
+            writer.writerow([f'="{value}"' if isinstance(value, str) and value.isdigit() and len(value) > 10 else str(value) for value in row])
 
 def process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty):
     driver = webdriver.Chrome()
@@ -153,6 +154,17 @@ class DataExtractorApp(QWidget):
 
         layout = QVBoxLayout()
 
+        help_button = QToolButton(self)
+        help_button.setText("?")
+        help_button.setToolTip("关于")
+        help_button.clicked.connect(self.show_about_dialog)
+
+        layout = QVBoxLayout(self)
+        hbox = QHBoxLayout()
+        hbox.addStretch()
+        hbox.addWidget(help_button)
+        layout.addLayout(hbox)
+
         font = QFont("Arial", 14)
         self.setFont(font)
 
@@ -215,6 +227,17 @@ class DataExtractorApp(QWidget):
                 QMessageBox.warning(self, "取消", "用户取消了保存文件操作。")
         else:
             QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
+
+    def show_about_dialog(self):
+        QMessageBox.about(
+            self,
+            "关于",
+            f'APP NAME: VIVA自提自动生成工具\nVERSION: {APP_VERSION}\nDEVELOPER: Haochu Chen\n\n'
+            "Copyright © 2025 Haochu Chen\n"
+            "All rights reserved.\n"
+            "Unauthorized copying, modification, distribution, or use for commercial purposes is prohibited."
+        )
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
