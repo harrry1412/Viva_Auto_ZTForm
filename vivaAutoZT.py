@@ -8,13 +8,13 @@ import json
 from datetime import datetime
 import csv
 from PyQt5.QtWidgets import (
-    QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit
+    QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit, QFileDialog
 )
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont
 import sys
 
-def write_to_csv(data_rows, filename="output.csv"):
+def write_to_csv(data_rows, filename):
     headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
     with open(filename, mode="w", newline="", encoding="utf-8-sig") as file:
         writer = csv.writer(file)
@@ -107,8 +107,12 @@ def process_data(session, login_url, url1, target_date, include_stock_status, fi
 
             data_rows.append(["" for _ in range(13)])
 
-    write_to_csv(data_rows)
-    QMessageBox.information(None, "完成", "数据处理完成，CSV 已生成！")
+    file_path, _ = QFileDialog.getSaveFileName(None, "保存文件", "Viva自提生成H.csv", "CSV文件 (*.csv)")
+    if file_path:
+        write_to_csv(data_rows, file_path)
+        QMessageBox.information(None, "完成", f"数据处理完成，文件已保存到: {file_path}")
+    else:
+        QMessageBox.warning(None, "取消", "用户取消了保存文件操作。")
 
 class DataExtractorApp(QWidget):
     def __init__(self):
@@ -165,6 +169,7 @@ class DataExtractorApp(QWidget):
         self.setLayout(layout)
 
     def on_generate_click(self):
+        QMessageBox.information(self, "提示", "正在生成，请耐心等待...")
         login_url = self.login_url_input.text()
         url1 = self.url1_input.text()
         target_date = self.target_date_input.date().toPyDate()
