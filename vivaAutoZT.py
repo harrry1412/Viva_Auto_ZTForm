@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit
 )
 from PyQt5.QtCore import QDate
+from PyQt5.QtGui import QFont
 import sys
 
 def write_to_csv(data_rows, filename="output.csv"):
@@ -116,8 +117,14 @@ class DataExtractorApp(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("数据提取工具")
-        self.resize(600, 400)
+
+        screen_size = QApplication.primaryScreen().size()
+        self.resize(screen_size.width() // 3, screen_size.height() * 3 // 4)
+
         layout = QVBoxLayout()
+
+        font = QFont("Arial", 14)
+        self.setFont(font)
 
         self.login_url_input = QLineEdit("http://34.95.11.166/sales/account/login")
         layout.addWidget(QLabel("登录 URL:"))
