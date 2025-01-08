@@ -11,8 +11,22 @@ from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit, QFileDialog
 )
 from PyQt5.QtCore import QDate
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 import sys
+import os
+
+# 图标文件名
+ICON_FILENAME = "app_icon.png"
+
+def get_icon_path():
+    """获取图标路径，兼容直接运行和打包后的路径"""
+    if getattr(sys, 'frozen', False):
+        # 如果是 PyInstaller 打包后的路径
+        base_path = sys._MEIPASS
+    else:
+        # 如果是直接运行
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, ICON_FILENAME)
 
 def write_to_csv(data_rows, filename):
     headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
@@ -116,6 +130,7 @@ class DataExtractorApp(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("数据提取工具")
+        self.setWindowIcon(QIcon(get_icon_path()))
 
         screen_size = QApplication.primaryScreen().size()
         self.resize(screen_size.width() // 3, screen_size.height() * 3 // 4)
@@ -186,6 +201,7 @@ class DataExtractorApp(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(get_icon_path()))
     extractor_app = DataExtractorApp()
     extractor_app.show()
     sys.exit(app.exec_())
