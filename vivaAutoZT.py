@@ -8,8 +8,9 @@ import json
 from datetime import datetime
 import csv
 from PyQt5.QtWidgets import (
-    QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox
+    QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit
 )
+from PyQt5.QtCore import QDate
 import sys
 
 def write_to_csv(data_rows, filename="output.csv"):
@@ -115,6 +116,7 @@ class DataExtractorApp(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("数据提取工具")
+        self.resize(600, 400)
         layout = QVBoxLayout()
 
         self.login_url_input = QLineEdit("http://34.95.11.166/sales/account/login")
@@ -125,8 +127,10 @@ class DataExtractorApp(QWidget):
         layout.addWidget(QLabel("数据 URL1:"))
         layout.addWidget(self.url1_input)
 
-        self.target_date_input = QLineEdit("2025-01-03")
-        layout.addWidget(QLabel("目标日期 (YYYY-MM-DD):"))
+        self.target_date_input = QDateEdit()
+        self.target_date_input.setCalendarPopup(True)
+        self.target_date_input.setDate(QDate.currentDate())
+        layout.addWidget(QLabel("目标日期:"))
         layout.addWidget(self.target_date_input)
 
         self.include_stock_status_input = QComboBox()
@@ -153,7 +157,7 @@ class DataExtractorApp(QWidget):
     def on_generate_click(self):
         login_url = self.login_url_input.text()
         url1 = self.url1_input.text()
-        target_date = datetime.strptime(self.target_date_input.text(), "%Y-%m-%d").date()
+        target_date = self.target_date_input.date().toPyDate()
         include_stock_status = self.include_stock_status_input.currentText() == "是"
         finished_filter = self.finished_filter_input.currentIndex() - 1
         skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
