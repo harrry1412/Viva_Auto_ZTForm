@@ -138,9 +138,10 @@ class DataExtractorApp(QWidget):
             return "URL错误"
 
         try:
-            response = requests.get(url1)
+            response = self.session.get(url1)  # 使用已登录的 session
             response.raise_for_status()
 
+            # 尝试解析 datalist 数据
             match = re.search(r"var\s+datalist\s*=\s*(\[.*?\]);", response.text, re.DOTALL)
             if match:
                 datalist = json.loads(match.group(1))
@@ -150,7 +151,18 @@ class DataExtractorApp(QWidget):
                         return first_item["Number"]
         except Exception as e:
             print(f"无法获取默认单号: {e}")
+
+        # 解析失败，打印 HTML 源代码的第 100-150 行
+        try:
+            lines = response.text.splitlines()  # 分割 HTML 为按行的列表
+            snippet = "\n".join(lines[99:150])  # 提取第 100-150 行
+            print("网页源代码 (第 100-150 行):")
+            print(snippet)
+        except Exception as inner_e:
+            print(f"无法打印网页源代码: {inner_e}")
+
         return "解析错误"
+
 
     def on_login_click(self):
         """点击登录按钮的处理逻辑"""
@@ -160,10 +172,19 @@ class DataExtractorApp(QWidget):
                 QMessageBox.warning(self, "警告", "登录页面 URL 不能为空！")
                 return
 
+            # 执行登录操作
             self.session = self.processor.get_authenticated_session(login_url)
             self.login_button.setVisible(False)  # 隐藏登录按钮
             self.login_status_label.setVisible(True)  # 显示登录成功文本
-            QMessageBox.information(self, "提示", "登录成功！您可以继续进行数据解析。")
+            QMessageBox.information(self, "提示", "登录成功！正在加载默认单号...")
+
+            # 在登录后加载默认单号
+            default_order_number = self.fetch_default_order_number()
+            if default_order_number:
+                self.target_number_input.setText(default_order_number)
+                print(f"默认单号加载成功: {default_order_number}")
+            else:
+                QMessageBox.warning(self, "警告", "无法加载默认单号，请检查数据源。")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"登录失败: {str(e)}")
 
