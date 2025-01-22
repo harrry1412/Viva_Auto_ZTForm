@@ -7,6 +7,8 @@ from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont, QIcon
 from openpyxl import Workbook
 from dataProcessor import DataProcessor  # 引入 DataProcessor
+import requests
+import re
 import os
 import json
 
@@ -58,7 +60,6 @@ class DataExtractorApp(QWidget):
         layout.addWidget(self.date_mode_button)
         layout.addWidget(self.number_mode_button)
 
-        # 模式切换事件
         self.date_mode_button.toggled.connect(self.update_input_fields)
 
         # 日期输入
@@ -67,7 +68,7 @@ class DataExtractorApp(QWidget):
         self.target_date_input.setDate(QDate.currentDate())
 
         # 单号输入
-        self.target_number_input = QLineEdit("单号Test")
+        self.target_number_input = QLineEdit(self.fetch_default_order_number())
         self.target_number_input.setVisible(False)
 
         layout.addWidget(QLabel("目标日期或单号:"))
@@ -118,6 +119,35 @@ class DataExtractorApp(QWidget):
         else:
             self.target_date_input.setVisible(False)
             self.target_number_input.setVisible(True)
+
+    def fetch_default_order_number(self):
+        """从 URL1 的 datalist 提取第一个字典的 Number 值"""
+        url1 = self.config.get("url1", "")
+        if not url1:
+            return "URL错误"  # URL 未配置，返回默认值
+
+        try:
+            response = requests.get(url1)
+            response.raise_for_status()
+
+            # 提取 datalist 数据（参考 process_data 中的解析方式）
+            match = re.search(r"var\s+datalist\s*=\s*(\[.*?\]);", response.text, re.DOTALL)
+            if match:
+                datalist_json = match.group(1)  # 匹配到 datalist 的 JSON 数据
+                datalist = json.loads(datalist_json)  # 将 JSON 数据解析为 Python 列表
+                print('************************************************')
+                print(datalist)
+                if datalist and isinstance(datalist, list):
+                    first_item = datalist[0]  # 获取第一个字典
+                    print('************************************************')
+                    print(first_item)
+                    if "Number" in first_item:
+                        return first_item["Number"]  # 返回第一个字典的 Number 值
+        except Exception as e:
+            print(f"无法获取默认单号: {e}")
+        return "解析错误"  # 请求失败或解析失败时返回默认值
+
+
 
     def on_generate_click(self):
         """点击生成按钮的处理逻辑"""
