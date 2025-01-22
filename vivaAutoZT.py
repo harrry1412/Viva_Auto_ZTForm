@@ -276,6 +276,8 @@ class DataExtractorApp(QWidget):
                 target = self.target_number_input.text()
                 mode = "orderNumber"
 
+            output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
+
             # 调用数据处理
             data_rows = self.process_data(
                 login_url, url1, base_url, target, mode,
@@ -284,13 +286,20 @@ class DataExtractorApp(QWidget):
 
             # 保存结果
             if data_rows:
-                output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
                 write_to_excel(data_rows, output_filepath)
-                QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {output_filepath}")
+                QMessageBox.information(
+                    self, "完成", f"数据处理完成，文件已保存到: {output_filepath}"
+                )
             else:
                 QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
+
+        except FileNotFoundError as fnf_error:
+            QMessageBox.critical(self, "错误", f"文件路径错误: {str(fnf_error)}")
+        except ValueError as ve:
+            QMessageBox.critical(self, "错误", f"数据处理失败: {str(ve)}")
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"发生错误: {str(e)}")
+            QMessageBox.critical(self, "错误", f"未知错误: {str(e)}")
+
 
     def show_about_dialog(self):
         QMessageBox.about(
