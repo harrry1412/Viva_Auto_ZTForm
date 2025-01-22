@@ -10,7 +10,7 @@ from openpyxl import Workbook
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QLineEdit, QLabel, QPushButton, QComboBox, QWidget, QMessageBox, QDateEdit, QFileDialog
 )
-from PyQt5.QtWidgets import QToolButton, QHBoxLayout
+from PyQt5.QtWidgets import QRadioButton, QButtonGroup
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont, QIcon
 import sys
@@ -175,20 +175,37 @@ class DataExtractorApp(QWidget):
 
         layout = QVBoxLayout()
 
-        help_button = QToolButton(self)
-        help_button.setText("?")
-        help_button.setToolTip("关于")
-        help_button.clicked.connect(self.show_about_dialog)
-
-        layout = QVBoxLayout(self)
-        hbox = QHBoxLayout()
-        hbox.addStretch()
-        hbox.addWidget(help_button)
-        layout.addLayout(hbox)
-
         font = QFont("Arial", 14)
         self.setFont(font)
 
+        # 添加生成模式选择单选框
+        self.mode_group = QButtonGroup(self)
+        self.date_mode_button = QRadioButton("按日期生成")
+        self.number_mode_button = QRadioButton("按单号生成")
+        self.mode_group.addButton(self.date_mode_button)
+        self.mode_group.addButton(self.number_mode_button)
+        self.date_mode_button.setChecked(True)  # 默认选择“按日期生成”
+        layout.addWidget(QLabel("选择生成模式:"))
+        layout.addWidget(self.date_mode_button)
+        layout.addWidget(self.number_mode_button)
+
+        # 添加模式变化触发器
+        self.date_mode_button.toggled.connect(self.update_input_fields)
+
+        # 日期选择器
+        self.target_date_input = QDateEdit()
+        self.target_date_input.setCalendarPopup(True)
+        self.target_date_input.setDate(QDate.currentDate())
+
+        # 单号输入框（默认隐藏）
+        self.target_number_input = QLineEdit("单号Test")
+        self.target_number_input.setVisible(False)
+
+        layout.addWidget(QLabel("目标日期或单号:"))
+        layout.addWidget(self.target_date_input)
+        layout.addWidget(self.target_number_input)
+
+        # 其他输入框保持不变
         self.output_filename_input = QLineEdit("Viva自提单生成H")
         layout.addWidget(QLabel("输出文件名:"))
         layout.addWidget(self.output_filename_input)
@@ -200,12 +217,6 @@ class DataExtractorApp(QWidget):
         self.url1_input = QLineEdit(self.config.get("url1", ""))
         layout.addWidget(QLabel("数据 URL:"))
         layout.addWidget(self.url1_input)
-
-        self.target_date_input = QDateEdit()
-        self.target_date_input.setCalendarPopup(True)
-        self.target_date_input.setDate(QDate.currentDate())
-        layout.addWidget(QLabel("要生成的日期:"))
-        layout.addWidget(self.target_date_input)
 
         self.include_stock_status_input = QComboBox()
         self.include_stock_status_input.addItems(["否", "是"])
@@ -225,29 +236,52 @@ class DataExtractorApp(QWidget):
         layout.addWidget(QLabel("跳过负库存记录:"))
         layout.addWidget(self.skip_negative_qty_input)
 
+        # 生成按钮
         self.generate_button = QPushButton("生成")
         self.generate_button.clicked.connect(self.on_generate_click)
         layout.addWidget(self.generate_button)
 
         self.setLayout(layout)
 
+    def update_input_fields(self):
+        """根据用户选择的生成模式更新输入框显示"""
+        if self.date_mode_button.isChecked():
+            self.target_date_input.setVisible(True)
+            self.target_number_input.setVisible(False)
+        else:
+            self.target_date_input.setVisible(False)
+            self.target_number_input.setVisible(True)
+
     def on_generate_click(self):
+        """生成逻辑，根据用户选择的模式传递不同参数"""
         login_url = self.login_url_input.text()
         url1 = self.url1_input.text()
         base_url = self.config.get("base_url", "")
-        target_date = self.target_date_input.date().toPyDate()
         include_stock_status = self.include_stock_status_input.currentText() == "是"
         finished_filter = self.finished_filter_input.currentIndex() - 1
         skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
 
+        if self.date_mode_button.isChecked():
+            # 按日期生成逻辑
+            target_date = self.target_date_input.date().toPyDate()
+            QMessageBox.information(self, "提示", f"生成按日期的文件，日期为: {target_date}")
+            data_rows = process_data(
+                requests.Session(), login_url, url1, base_url, target_date, 
+                include_stock_status, finished_filter, skip_negative_qty
+            )
+        else:
+            # 按单号生成逻辑
+            target_number = self.target_number_input.text()
+            QMessageBox.information(self, "提示", f"生成按单号的文件，单号为: {target_number}")
+            # 此处应调用按单号生成的逻辑，可以扩展 `process_data` 方法以支持单号处理
+            data_rows = []  # 替换为实际按单号生成的数据提取逻辑
+
+        # 通用文件保存逻辑
         output_filename = self.output_filename_input.text().strip()
         if not output_filename:
             QMessageBox.warning(self, "警告", "输出文件名不能为空。")
             return
         output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
-
-        session = requests.Session()
-        data_rows = process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty)
 
         if data_rows:
             try:
@@ -257,7 +291,7 @@ class DataExtractorApp(QWidget):
                 QMessageBox.critical(self, "错误", f"文件保存失败: {str(e)}")
         else:
             QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
-
+            
     def show_about_dialog(self):
         QMessageBox.about(
             self,
