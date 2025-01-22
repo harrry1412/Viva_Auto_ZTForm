@@ -1,12 +1,16 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QRadioButton, QDateEdit, QMessageBox, QButtonGroup
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton,
+    QComboBox, QRadioButton, QDateEdit, QMessageBox, QButtonGroup
+)
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont, QIcon
 from openpyxl import Workbook
-from dataProcessor import DataProcessor
+from dataProcessor import DataProcessor  # 引入 DataProcessor
 import os
 import json
 
+# 全局常量
 CONFIG_FILENAME = "config.json"
 ICON_FILENAME = "app_icon.png"
 APP_TITLE = "VIVA自提单自动生成工具 V1.0.0"
@@ -15,7 +19,7 @@ APP_TITLE = "VIVA自提单自动生成工具 V1.0.0"
 class DataExtractorApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.config = self.load_config()
+        self.config = self.load_config()  # 加载配置文件
         self.processor = DataProcessor()  # 实例化数据处理类
         self.init_ui()
 
@@ -30,6 +34,7 @@ class DataExtractorApp(QWidget):
             raise FileNotFoundError(f"配置文件未找到: {config_path}")
 
     def init_ui(self):
+        """初始化用户界面"""
         self.setWindowTitle(APP_TITLE)
         self.setWindowIcon(QIcon(self.get_icon_path()))
 
@@ -53,6 +58,7 @@ class DataExtractorApp(QWidget):
         layout.addWidget(self.date_mode_button)
         layout.addWidget(self.number_mode_button)
 
+        # 模式切换事件
         self.date_mode_button.toggled.connect(self.update_input_fields)
 
         # 日期输入
@@ -81,7 +87,7 @@ class DataExtractorApp(QWidget):
         layout.addWidget(QLabel("数据 URL:"))
         layout.addWidget(self.url1_input)
 
-        # 配置下拉框
+        # 下拉框选项
         self.include_stock_status_input = QComboBox()
         self.include_stock_status_input.addItems(["否", "是"])
         layout.addWidget(QLabel("是否生成订货列:"))
@@ -105,7 +111,7 @@ class DataExtractorApp(QWidget):
         self.setLayout(layout)
 
     def update_input_fields(self):
-        """更新输入框显示"""
+        """根据选择的生成模式切换输入框"""
         if self.date_mode_button.isChecked():
             self.target_date_input.setVisible(True)
             self.target_number_input.setVisible(False)
@@ -114,7 +120,7 @@ class DataExtractorApp(QWidget):
             self.target_number_input.setVisible(True)
 
     def on_generate_click(self):
-        """点击生成按钮"""
+        """点击生成按钮的处理逻辑"""
         try:
             login_url = self.login_url_input.text()
             url1 = self.url1_input.text()
@@ -135,10 +141,10 @@ class DataExtractorApp(QWidget):
                 target = self.target_number_input.text()
                 mode = "orderNumber"
 
+            # 使用 DataProcessor 处理数据
             session = self.processor.get_authenticated_session(login_url)
             response = session.get(url1)
             datalist = self.processor.extract_datalist(response.text)
-
             filtered_data = self.processor.filter_data(datalist, target, mode, finished_filter)
             data_rows = self.processor.fetch_and_format_data(filtered_data, session, base_url, include_stock_status, skip_negative_qty)
 
@@ -150,6 +156,7 @@ class DataExtractorApp(QWidget):
             QMessageBox.critical(self, "错误", f"发生错误: {str(e)}")
 
     def write_to_excel(self, data_rows, filename):
+        """保存数据到 Excel 文件"""
         headers = ["空A", "销售", "单号", "空D", "产品型号", "供货商", "数量", "顾客姓名", "电话", "家具自提", "留言", "货期", "订货"]
         wb = Workbook()
         ws = wb.active
@@ -161,6 +168,7 @@ class DataExtractorApp(QWidget):
         wb.save(filename)
 
     def get_icon_path(self):
+        """获取图标路径"""
         base_path = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(base_path, ICON_FILENAME)
 

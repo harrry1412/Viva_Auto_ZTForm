@@ -90,10 +90,14 @@ class DataProcessor:
                 for item in items:
                     qty = float(item.get("Qty", 0))
                     qty_oh = float(item.get("Qty_OH", 0))
-                    stock_status = "现货" if include_stock_status and (qty_oh - qty >= 1) else "需要订货"
+                    stock_status = ""
+                    # 仅在用户选择生成订货列时计算订货状态
+                    if include_stock_status:
+                        stock_status = "现货" if qty_oh - qty >= 1 else "需要订货"
+
                     item_row = [
-                        "", "", "", "", item.get("VendorPLU", ""), item.get("VendorName", ""), item.get("Qty", ""),
-                        "", "", "", "", "", stock_status
+                        "", "", "", "", item.get("VendorPLU", ""), item.get("VendorName", ""),
+                        item.get("Qty", ""), "", "", "", "", "", stock_status if include_stock_status else ""
                     ]
                     data_rows.append(item_row)
 
@@ -103,6 +107,7 @@ class DataProcessor:
                 print(f"提取数据失败: {str(e)}")
                 continue
         return data_rows
+
 
     def combine_phone_numbers(self, data_content):
         """合并电话号码"""
