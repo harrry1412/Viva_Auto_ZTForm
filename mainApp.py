@@ -8,9 +8,9 @@ from PyQt5.QtGui import QFont, QIcon
 from openpyxl import Workbook
 from dataProcessor import DataProcessor  # 引入 DataProcessor
 import requests
-import re
 import os
 import json
+import re
 
 # 全局常量
 CONFIG_FILENAME = "config.json"
@@ -23,6 +23,7 @@ class DataExtractorApp(QWidget):
         super().__init__()
         self.config = self.load_config()  # 加载配置文件
         self.processor = DataProcessor()  # 实例化数据处理类
+        self.session = None  # 全局 requests.Session 对象，用于复用 cookie
         self.init_ui()
 
     def load_config(self):
@@ -47,6 +48,11 @@ class DataExtractorApp(QWidget):
 
         font = QFont("Arial", 14)
         self.setFont(font)
+
+        # 登录按钮
+        self.login_button = QPushButton("登录")
+        self.login_button.clicked.connect(self.on_login_click)
+        layout.addWidget(self.login_button)
 
         # 模式选择
         self.mode_group = QButtonGroup(self)
@@ -124,34 +130,43 @@ class DataExtractorApp(QWidget):
         """从 URL1 的 datalist 提取第一个字典的 Number 值"""
         url1 = self.config.get("url1", "")
         if not url1:
-            return "URL错误"  # URL 未配置，返回默认值
+            return "URL错误"
 
         try:
             response = requests.get(url1)
             response.raise_for_status()
 
-            # 提取 datalist 数据（参考 process_data 中的解析方式）
             match = re.search(r"var\s+datalist\s*=\s*(\[.*?\]);", response.text, re.DOTALL)
             if match:
-                datalist_json = match.group(1)  # 匹配到 datalist 的 JSON 数据
-                datalist = json.loads(datalist_json)  # 将 JSON 数据解析为 Python 列表
-                print('************************************************')
-                print(datalist)
+                datalist = json.loads(match.group(1))
                 if datalist and isinstance(datalist, list):
-                    first_item = datalist[0]  # 获取第一个字典
-                    print('************************************************')
-                    print(first_item)
+                    first_item = datalist[0]
                     if "Number" in first_item:
-                        return first_item["Number"]  # 返回第一个字典的 Number 值
+                        return first_item["Number"]
         except Exception as e:
             print(f"无法获取默认单号: {e}")
-        return "解析错误"  # 请求失败或解析失败时返回默认值
+        return "解析错误"
 
+    def on_login_click(self):
+        """点击登录按钮的处理逻辑"""
+        try:
+            login_url = self.login_url_input.text()
+            if not login_url:
+                QMessageBox.warning(self, "警告", "登录页面 URL 不能为空！")
+                return
 
+            self.session = self.processor.get_authenticated_session(login_url)
+            QMessageBox.information(self, "提示", "登录成功！您可以继续进行数据解析。")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"登录失败: {str(e)}")
 
     def on_generate_click(self):
         """点击生成按钮的处理逻辑"""
         try:
+            if not self.session:
+                QMessageBox.warning(self, "警告", "请先登录！")
+                return
+
             login_url = self.login_url_input.text()
             url1 = self.url1_input.text()
             base_url = self.config.get("base_url", "")
@@ -171,14 +186,11 @@ class DataExtractorApp(QWidget):
                 target = self.target_number_input.text()
                 mode = "orderNumber"
 
-            # 使用 DataProcessor 处理数据
-            session = self.processor.get_authenticated_session(login_url)
-            response = session.get(url1)
+            response = self.session.get(url1)
             datalist = self.processor.extract_datalist(response.text)
             filtered_data = self.processor.filter_data(datalist, target, mode, finished_filter)
-            data_rows = self.processor.fetch_and_format_data(filtered_data, session, base_url, include_stock_status, skip_negative_qty)
+            data_rows = self.processor.fetch_and_format_data(filtered_data, self.session, base_url, include_stock_status, skip_negative_qty)
 
-            # 保存到 Excel
             output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
             self.write_to_excel(data_rows, output_filepath)
             QMessageBox.information(self, "完成", f"数据处理完成，文件已保存为：{output_filepath}")
