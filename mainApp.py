@@ -172,10 +172,18 @@ class DataExtractorApp(QWidget):
                 QMessageBox.warning(self, "警告", "登录页面 URL 不能为空！")
                 return
 
+            # 设置登录按钮状态为“登录中，请稍后”
+            self.login_button.setText("登录中，请稍后")
+            self.login_button.setEnabled(False)  # 禁用按钮以防重复点击
+            QApplication.processEvents()  # 刷新界面
+
             # 执行登录操作
             self.session = self.processor.get_authenticated_session(login_url)
-            self.login_button.setVisible(False)  # 隐藏登录按钮
-            self.login_status_label.setVisible(True)  # 显示登录成功文本
+
+            # 登录成功后更新按钮状态为“登录成功”
+            self.login_button.setText("登录成功")
+            self.login_button.setEnabled(False)  # 禁用按钮，防止再次点击
+
             QMessageBox.information(self, "提示", "登录成功！正在加载默认单号...")
 
             # 在登录后加载默认单号
@@ -186,6 +194,9 @@ class DataExtractorApp(QWidget):
             else:
                 QMessageBox.warning(self, "警告", "无法加载默认单号，请检查数据源。")
         except Exception as e:
+            # 登录失败时恢复按钮状态
+            self.login_button.setText("登录")
+            self.login_button.setEnabled(True)
             QMessageBox.critical(self, "错误", f"登录失败: {str(e)}")
 
     def on_generate_click(self):
@@ -214,16 +225,24 @@ class DataExtractorApp(QWidget):
                 target = self.target_number_input.text()
                 mode = "orderNumber"
 
+            # 使用 DataProcessor 处理数据
             response = self.session.get(url1)
             datalist = self.processor.extract_datalist(response.text)
             filtered_data = self.processor.filter_data(datalist, target, mode, finished_filter)
             data_rows = self.processor.fetch_and_format_data(filtered_data, self.session, base_url, include_stock_status, skip_negative_qty)
 
+            # 检查是否有内容可写入 Excel
+            if not data_rows:
+                QMessageBox.warning(self, "提示", "解析到的内容为空，未生成文件。")
+                return
+
+            # 保存到 Excel
             output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
             self.write_to_excel(data_rows, output_filepath)
             QMessageBox.information(self, "完成", f"数据处理完成，文件已保存为：{output_filepath}")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"发生错误: {str(e)}")
+
 
     def write_to_excel(self, data_rows, filename):
         """保存数据到 Excel 文件"""
