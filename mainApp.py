@@ -59,6 +59,11 @@ class DataExtractorApp(QWidget):
         self.login_status_label.setVisible(False)
         layout.addWidget(self.login_status_label)
 
+        # 登录页面 URL
+        self.login_url_input = QLineEdit(self.config.get("login_url", ""))
+        layout.addWidget(QLabel("登录页面 URL:"))
+        layout.addWidget(self.login_url_input)
+
         # 模式选择
         self.mode_group = QButtonGroup(self)
         self.date_mode_button = QRadioButton("按日期生成")
@@ -86,20 +91,17 @@ class DataExtractorApp(QWidget):
         layout.addWidget(self.target_date_input)
         layout.addWidget(self.target_number_input)
 
-        # 其他输入框
+        # 输出文件名
         self.output_filename_input = QLineEdit("Viva自提单生成")
         layout.addWidget(QLabel("输出文件名:"))
         layout.addWidget(self.output_filename_input)
 
-        self.login_url_input = QLineEdit(self.config.get("login_url", ""))
-        layout.addWidget(QLabel("登录页面 URL:"))
-        layout.addWidget(self.login_url_input)
-
+        # 数据 URL
         self.url1_input = QLineEdit(self.config.get("url1", ""))
         layout.addWidget(QLabel("数据 URL:"))
         layout.addWidget(self.url1_input)
 
-        # 下拉框选项
+        # 选项设置
         self.include_stock_status_input = QComboBox()
         self.include_stock_status_input.addItems(["否", "是"])
         layout.addWidget(QLabel("是否生成订货列:"))
@@ -120,7 +122,23 @@ class DataExtractorApp(QWidget):
         self.generate_button.clicked.connect(self.on_generate_click)
         layout.addWidget(self.generate_button)
 
+        # 禁用所有控件，除了登录页面 URL 和登录按钮
+        self.toggle_controls(False)
+
         self.setLayout(layout)
+
+    def toggle_controls(self, enable):
+        """启用或禁用所有控件（除了登录页面 URL 和登录按钮）"""
+        self.date_mode_button.setEnabled(enable)
+        self.number_mode_button.setEnabled(enable)
+        self.target_date_input.setEnabled(enable)
+        self.target_number_input.setEnabled(enable)
+        self.output_filename_input.setEnabled(enable)
+        self.url1_input.setEnabled(enable)
+        self.include_stock_status_input.setEnabled(enable)
+        self.finished_filter_input.setEnabled(enable)
+        self.skip_negative_qty_input.setEnabled(enable)
+        self.generate_button.setEnabled(enable)
 
     def update_input_fields(self):
         """根据选择的生成模式切换输入框"""
@@ -147,17 +165,15 @@ class DataExtractorApp(QWidget):
             # 执行登录操作
             self.session = self.processor.get_authenticated_session(login_url)
 
-            # 登录成功后尝试加载默认单号
-            default_order_number = self.fetch_default_order_number()
-            if default_order_number == "解析错误" or not default_order_number:
-                raise ValueError("默认单号解析错误，登录失败。")
+            # 登录成功后启用其他控件
+            self.toggle_controls(True)
 
-            # 默认单号解析成功
-            self.target_number_input.setText(default_order_number)
+            # 更新按钮状态
             self.login_button.setText("登录成功")
-            self.login_button.setEnabled(False)  # 禁用按钮，防止再次点击
+            self.login_button.setEnabled(False)
             self.login_status_label.setVisible(True)
-            QMessageBox.information(self, "提示", f"登录成功！默认单号: {default_order_number}")
+
+            QMessageBox.information(self, "提示", "登录成功！")
 
         except Exception as e:
             # 登录失败时恢复按钮状态
