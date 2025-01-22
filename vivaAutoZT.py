@@ -254,44 +254,44 @@ class DataExtractorApp(QWidget):
 
     def on_generate_click(self):
         """生成逻辑，根据用户选择的模式传递不同参数"""
-        login_url = self.login_url_input.text()
-        url1 = self.url1_input.text()
-        base_url = self.config.get("base_url", "")
-        include_stock_status = self.include_stock_status_input.currentText() == "是"
-        finished_filter = self.finished_filter_input.currentIndex() - 1
-        skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
+        try:
+            # 收集公共输入
+            login_url = self.login_url_input.text()
+            url1 = self.url1_input.text()
+            base_url = self.config.get("base_url", "")
+            include_stock_status = self.include_stock_status_input.currentText() == "是"
+            finished_filter = self.finished_filter_input.currentIndex() - 1
+            skip_negative_qty = self.skip_negative_qty_input.currentText() == "是"
+            output_filename = self.output_filename_input.text().strip()
 
-        if self.date_mode_button.isChecked():
-            # 按日期生成逻辑
-            target_date = self.target_date_input.date().toPyDate()
-            QMessageBox.information(self, "提示", f"生成按日期的文件，日期为: {target_date}")
-            data_rows = process_data(
-                requests.Session(), login_url, url1, base_url, target_date, 
+            if not output_filename:
+                QMessageBox.warning(self, "警告", "输出文件名不能为空。")
+                return
+
+            # 根据模式决定参数
+            if self.date_mode_button.isChecked():
+                target = self.target_date_input.date().toPyDate()
+                mode = "date"
+            else:
+                target = self.target_number_input.text()
+                mode = "orderNumber"
+
+            # 调用数据处理
+            data_rows = self.process_data(
+                login_url, url1, base_url, target, mode,
                 include_stock_status, finished_filter, skip_negative_qty
             )
-        else:
-            # 按单号生成逻辑
-            target_number = self.target_number_input.text()
-            QMessageBox.information(self, "提示", f"生成按单号的文件，单号为: {target_number}")
-            # 此处应调用按单号生成的逻辑，可以扩展 `process_data` 方法以支持单号处理
-            data_rows = []  # 替换为实际按单号生成的数据提取逻辑
 
-        # 通用文件保存逻辑
-        output_filename = self.output_filename_input.text().strip()
-        if not output_filename:
-            QMessageBox.warning(self, "警告", "输出文件名不能为空。")
-            return
-        output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
-
-        if data_rows:
-            try:
+            # 保存结果
+            if data_rows:
+                output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
                 write_to_excel(data_rows, output_filepath)
                 QMessageBox.information(self, "完成", f"数据处理完成，文件已保存到: {output_filepath}")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"文件保存失败: {str(e)}")
-        else:
-            QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
-            
+            else:
+                QMessageBox.information(self, "无记录", "选定条件下没有生成任何记录。")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"发生错误: {str(e)}")
+
     def show_about_dialog(self):
         QMessageBox.about(
             self,
