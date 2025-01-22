@@ -74,7 +74,7 @@ def write_to_excel(data_rows, filename):
     # 保存文件
     wb.save(filename)
 
-def process_data(self, session, login_url, url1, base_url, target, mode, include_stock_status, finished_filter, skip_negative_qty):
+def process_data(self, login_url, url1, base_url, target, mode, include_stock_status, finished_filter, skip_negative_qty):
     """处理数据，支持按日期或按单号生成"""
     # 登录并获取认证会话
     session = self.get_authenticated_session(login_url)
@@ -92,6 +92,7 @@ def process_data(self, session, login_url, url1, base_url, target, mode, include
 
     # 提取详细信息并格式化
     return self.fetch_and_format_data(filtered_data, session, base_url, include_stock_status, skip_negative_qty)
+
 
 def get_authenticated_session(self, login_url):
     """使用 Selenium 登录并返回已认证的 Requests 会话"""
@@ -322,7 +323,7 @@ class DataExtractorApp(QWidget):
             output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
 
             # 调用数据处理
-            data_rows = process_data(
+            data_rows = self.process_data(
                 login_url, url1, base_url, target, mode,
                 include_stock_status, finished_filter, skip_negative_qty
             )
@@ -342,6 +343,7 @@ class DataExtractorApp(QWidget):
             QMessageBox.critical(self, "错误", f"数据处理失败: {str(ve)}")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"未知错误: {str(e)}")
+
 
 
     def show_about_dialog(self):
