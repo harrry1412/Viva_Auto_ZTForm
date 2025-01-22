@@ -131,6 +131,40 @@ class DataExtractorApp(QWidget):
             self.target_date_input.setVisible(False)
             self.target_number_input.setVisible(True)
 
+    def on_login_click(self):
+        """点击登录按钮的处理逻辑"""
+        try:
+            login_url = self.login_url_input.text()
+            if not login_url:
+                QMessageBox.warning(self, "警告", "登录页面 URL 不能为空！")
+                return
+
+            # 设置登录按钮状态为“登录中，请稍后”
+            self.login_button.setText("登录中，请稍后")
+            self.login_button.setEnabled(False)  # 禁用按钮以防重复点击
+            QApplication.processEvents()  # 刷新界面
+
+            # 执行登录操作
+            self.session = self.processor.get_authenticated_session(login_url)
+
+            # 登录成功后尝试加载默认单号
+            default_order_number = self.fetch_default_order_number()
+            if default_order_number == "解析错误" or not default_order_number:
+                raise ValueError("默认单号解析错误，登录失败。")
+
+            # 默认单号解析成功
+            self.target_number_input.setText(default_order_number)
+            self.login_button.setText("登录成功")
+            self.login_button.setEnabled(False)  # 禁用按钮，防止再次点击
+            self.login_status_label.setVisible(True)
+            QMessageBox.information(self, "提示", f"登录成功！默认单号: {default_order_number}")
+
+        except Exception as e:
+            # 登录失败时恢复按钮状态
+            self.login_button.setText("登录")
+            self.login_button.setEnabled(True)
+            QMessageBox.critical(self, "错误", f"登录失败: {str(e)}")
+
     def fetch_default_order_number(self):
         """从 URL1 的 datalist 提取第一个字典的 Number 值"""
         url1 = self.config.get("url1", "")
@@ -164,46 +198,18 @@ class DataExtractorApp(QWidget):
         return "解析错误"
 
 
-    def on_login_click(self):
-        """点击登录按钮的处理逻辑"""
-        try:
-            login_url = self.login_url_input.text()
-            if not login_url:
-                QMessageBox.warning(self, "警告", "登录页面 URL 不能为空！")
-                return
-
-            # 设置登录按钮状态为“登录中，请稍后”
-            self.login_button.setText("登录中，请稍后")
-            self.login_button.setEnabled(False)  # 禁用按钮以防重复点击
-            QApplication.processEvents()  # 刷新界面
-
-            # 执行登录操作
-            self.session = self.processor.get_authenticated_session(login_url)
-
-            # 登录成功后更新按钮状态为“登录成功”
-            self.login_button.setText("登录成功")
-            self.login_button.setEnabled(False)  # 禁用按钮，防止再次点击
-
-            QMessageBox.information(self, "提示", "登录成功！正在加载默认单号...")
-
-            # 在登录后加载默认单号
-            default_order_number = self.fetch_default_order_number()
-            if default_order_number:
-                self.target_number_input.setText(default_order_number)
-                print(f"默认单号加载成功: {default_order_number}")
-            else:
-                QMessageBox.warning(self, "警告", "无法加载默认单号，请检查数据源。")
-        except Exception as e:
-            # 登录失败时恢复按钮状态
-            self.login_button.setText("登录")
-            self.login_button.setEnabled(True)
-            QMessageBox.critical(self, "错误", f"登录失败: {str(e)}")
-
     def on_generate_click(self):
         """点击生成按钮的处理逻辑"""
         try:
+            # 禁用生成按钮并修改按钮文本
+            self.generate_button.setText("正在生成，请稍后")
+            self.generate_button.setEnabled(False)  # 禁用按钮
+            QApplication.processEvents()  # 刷新界面
+
             if not self.session:
                 QMessageBox.warning(self, "警告", "请先登录！")
+                self.generate_button.setText("生成")
+                self.generate_button.setEnabled(True)  # 恢复按钮
                 return
 
             login_url = self.login_url_input.text()
@@ -216,6 +222,8 @@ class DataExtractorApp(QWidget):
 
             if not output_filename:
                 QMessageBox.warning(self, "警告", "输出文件名不能为空！")
+                self.generate_button.setText("生成")
+                self.generate_button.setEnabled(True)  # 恢复按钮
                 return
 
             if self.date_mode_button.isChecked():
@@ -234,14 +242,23 @@ class DataExtractorApp(QWidget):
             # 检查是否有内容可写入 Excel
             if not data_rows:
                 QMessageBox.warning(self, "提示", "解析到的内容为空，未生成文件。")
+                self.generate_button.setText("生成")
+                self.generate_button.setEnabled(True)  # 恢复按钮
                 return
 
             # 保存到 Excel
             output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
             self.write_to_excel(data_rows, output_filepath)
             QMessageBox.information(self, "完成", f"数据处理完成，文件已保存为：{output_filepath}")
+
         except Exception as e:
             QMessageBox.critical(self, "错误", f"发生错误: {str(e)}")
+
+        finally:
+            # 恢复生成按钮状态
+            self.generate_button.setText("生成")
+            self.generate_button.setEnabled(True)
+
 
 
     def write_to_excel(self, data_rows, filename):
