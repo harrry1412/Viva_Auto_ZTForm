@@ -322,7 +322,7 @@ class DataExtractorApp(QWidget):
             output_filepath = f"//VIVA303-WORK/Viva店面共享/{output_filename}.xlsx"
 
             # 调用数据处理
-            data_rows = self.process_data(
+            data_rows = process_data(
                 login_url, url1, base_url, target, mode,
                 include_stock_status, finished_filter, skip_negative_qty
             )
