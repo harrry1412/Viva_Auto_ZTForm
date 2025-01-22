@@ -54,6 +54,11 @@ class DataExtractorApp(QWidget):
         self.login_button.clicked.connect(self.on_login_click)
         layout.addWidget(self.login_button)
 
+        # 登录状态文本（初始隐藏）
+        self.login_status_label = QLabel("登录成功！")
+        self.login_status_label.setVisible(False)
+        layout.addWidget(self.login_status_label)
+
         # 登录页面 URL
         self.login_url_input = QLineEdit(self.config.get("login_url", ""))
         layout.addWidget(QLabel("登录页面 URL:"))
@@ -77,20 +82,17 @@ class DataExtractorApp(QWidget):
         self.target_date_input = QDateEdit()
         self.target_date_input.setCalendarPopup(True)
         self.target_date_input.setDate(QDate.currentDate())
-        self.target_date_input.dateChanged.connect(self.update_output_filename)
 
         # 单号输入
-        self.target_number_input = QLineEdit()
+        self.target_number_input = QLineEdit(self.fetch_default_order_number())
         self.target_number_input.setVisible(False)
-        self.target_number_input.textChanged.connect(self.update_output_filename)
 
         layout.addWidget(QLabel("目标日期或单号:"))
         layout.addWidget(self.target_date_input)
         layout.addWidget(self.target_number_input)
 
         # 输出文件名
-        self.output_filename_input = QLineEdit()
-        self.update_output_filename()  # 初始化默认文件名
+        self.output_filename_input = QLineEdit("Viva自提单生成")
         layout.addWidget(QLabel("输出文件名:"))
         layout.addWidget(self.output_filename_input)
 
@@ -99,38 +101,31 @@ class DataExtractorApp(QWidget):
         layout.addWidget(QLabel("数据 URL:"))
         layout.addWidget(self.url1_input)
 
+        # 选项设置
+        self.include_stock_status_input = QComboBox()
+        self.include_stock_status_input.addItems(["否", "是"])
+        layout.addWidget(QLabel("是否生成订货列:"))
+        layout.addWidget(self.include_stock_status_input)
+
+        self.finished_filter_input = QComboBox()
+        self.finished_filter_input.addItems(["全部", "仅已标记完结的订单", "仅未标记完结的订单"])
+        layout.addWidget(QLabel("生成已标记完结还是未完结的订单:"))
+        layout.addWidget(self.finished_filter_input)
+
+        self.skip_negative_qty_input = QComboBox()
+        self.skip_negative_qty_input.addItems(["是", "否"])
+        layout.addWidget(QLabel("跳过负库存记录:"))
+        layout.addWidget(self.skip_negative_qty_input)
+
         # 生成按钮
         self.generate_button = QPushButton("生成")
         self.generate_button.clicked.connect(self.on_generate_click)
         layout.addWidget(self.generate_button)
 
+        # 禁用所有控件，除了登录页面 URL 和登录按钮
+        self.toggle_controls(False)
+
         self.setLayout(layout)
-
-    def update_input_fields(self):
-        """根据选择的生成模式切换输入框"""
-        if self.date_mode_button.isChecked():
-            self.target_date_input.setVisible(True)
-            self.target_number_input.setVisible(False)
-        else:
-            self.target_date_input.setVisible(False)
-            self.target_number_input.setVisible(True)
-
-        self.update_output_filename()
-
-    def update_output_filename(self):
-        """动态更新输出文件名"""
-        if self.date_mode_button.isChecked():
-            selected_date = self.target_date_input.date().toString("yyyy-MM-dd")
-            default_filename = f"Viva自提单生成H_{selected_date}"
-        else:
-            target_number = self.target_number_input.text().strip()
-            if target_number:
-                default_filename = f"Viva自提单生成H_{target_number}"
-            else:
-                default_filename = "Viva自提单生成H_单号未填写"
-
-        self.output_filename_input.setText(default_filename)
-
 
     def toggle_controls(self, enable):
         """启用或禁用所有控件（除了登录页面 URL 和登录按钮）"""
