@@ -74,7 +74,27 @@ def write_to_excel(data_rows, filename):
     # 保存文件
     wb.save(filename)
 
-def process_data(session, login_url, url1, base_url, target_date, include_stock_status, finished_filter, skip_negative_qty):
+def process_data(self, session, login_url, url1, base_url, target, mode, include_stock_status, finished_filter, skip_negative_qty):
+    """处理数据，支持按日期或按单号生成"""
+    # 登录并获取认证会话
+    session = self.get_authenticated_session(login_url)
+
+    # 请求数据列表
+    response1 = session.get(url1)
+    response1.raise_for_status()
+    datalist = self.extract_datalist(response1.text)
+    if not datalist:
+        QMessageBox.critical(None, "错误", "未找到 datalist 数据。")
+        return []
+
+    # 根据模式筛选数据
+    filtered_data = self.filter_data(datalist, target, mode, finished_filter)
+
+    # 提取详细信息并格式化
+    return self.fetch_and_format_data(filtered_data, session, base_url, include_stock_status, skip_negative_qty)
+
+def get_authenticated_session(self, login_url):
+    """使用 Selenium 登录并返回已认证的 Requests 会话"""
     driver = webdriver.Chrome()
     driver.get(login_url)
     QMessageBox.information(None, "提示", "请在浏览器中完成登录后点击确定继续。")
@@ -85,80 +105,103 @@ def process_data(session, login_url, url1, base_url, target_date, include_stock_
     session = requests.Session()
     for cookie in cookies:
         session.cookies.set(cookie['name'], cookie['value'])
+    return session
 
-    response1 = session.get(url1)
-    response1.raise_for_status()
-    html_content1 = response1.text
+def extract_datalist(self, html_content):
+    """从 HTML 中提取 datalist 数据"""
+    match = re.search(r"var\s+datalist\s*=\s*(\[.*?\]);", html_content, re.DOTALL)
+    if not match:
+        return None
+    return json.loads(match.group(1))
 
-    match_datalist = re.search(r"var\s+datalist\s*=\s*(\[.*?\]);", html_content1, re.DOTALL)
-    if not match_datalist:
-        QMessageBox.critical(None, "错误", "未找到 datalist 数据。")
-        return []
+def filter_data(self, datalist, target, mode, finished_filter):
+    """根据模式和条件筛选数据"""
+    if mode == "date":
+        return [
+            {
+                "OriginalID": item["OriginalID"],
+                "UserName": item["UserName"] if "UserName" in item else "无此字段",
+                "FirstName": item["FirstName"] if "FirstName" in item else "无此字段",
+                "LastName": item["LastName"] if "LastName" in item else "无此字段",
+                "Number": item["Number"] if "Number" in item else "无此字段",
+                "Created": item["Created"]
+            }
+            for item in datalist
+            if (finished_filter not in [0, 1] or item.get("finished") == finished_filter)
+            and "Created" in item
+            and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S").date() == target
+        ]
+    elif mode == "orderNumber":
+        return [
+            {
+                "OriginalID": item["OriginalID"],
+                "UserName": item["UserName"] if "UserName" in item else "无此字段",
+                "FirstName": item["FirstName"] if "FirstName" in item else "无此字段",
+                "LastName": item["LastName"] if "LastName" in item else "无此字段",
+                "Number": item["Number"] if "Number" in item else "无此字段"
+            }
+            for item in datalist
+            if (finished_filter not in [0, 1] or item.get("finished") == finished_filter)
+            and item["Number"] == target
+        ]
+    else:
+        raise ValueError(f"未知模式: {mode}")
 
-    datalist_content = json.loads(match_datalist.group(1))
-    filtered_data = [
-        {
-            "OriginalID": item.get("OriginalID"),
-            "UserName": item.get("UserName", "无此字段"),
-            "FirstName": item.get("FirstName", "无此字段"),
-            "LastName": item.get("LastName", "无此字段"),
-            "Number": item.get("Number", "无此字段")
-        }
-        for item in datalist_content
-        if (finished_filter not in [0, 1] or item.get("finished") == finished_filter)
-        and "Created" in item
-        and datetime.strptime(item["Created"], "%Y-%m-%d %H:%M:%S").date() == target_date
-    ]
-
+def fetch_and_format_data(self, filtered_data, session, base_url, include_stock_status, skip_negative_qty):
+    """根据筛选后的数据提取详细信息并格式化为 Excel 行"""
     data_rows = []
-
     for data in filtered_data:
         original_id = data["OriginalID"]
         url2 = f"{base_url}{original_id}"
-        response2 = session.get(url2)
-        response2.raise_for_status()
-        html_content2 = response2.text
-
-        match_data = re.search(r"var\s+data\s*=\s*(\{.*?\});", html_content2, re.DOTALL)
-        if match_data:
-            data_content = json.loads(match_data.group(1))
-            items = data_content.get("items", [])
-
-            if skip_negative_qty:
-                items = [item for item in items if float(item.get("Qty", 0)) >= 0]
-            if skip_negative_qty and not items:
+        try:
+            response2 = session.get(url2)
+            response2.raise_for_status()
+            match_data = re.search(r"var\s+data\s*=\s*(\{.*?\});", response2.text, re.DOTALL)
+            if not match_data:
                 continue
+            data_content = json.loads(match_data.group(1))
 
-            phone_numbers = [
-                data_content.get("PhoneCell", ""),
-                data_content.get("PhoneHome", ""),
-                data_content.get("PhoneOffice", "")
-            ]
-            phone_numbers = list(filter(None, phone_numbers))
-            phone_combined = "/".join(phone_numbers) if phone_numbers else ""
-
+            # 格式化基础数据
+            phone_combined = self.combine_phone_numbers(data_content)
             data_row = [
                 "", data["UserName"], data["Number"], "", "", "", "",
                 f"{data['FirstName']} {data['LastName']}", phone_combined, "", "", "", ""
             ]
             data_rows.append(data_row)
 
+            # 格式化详细项目数据
+            items = data_content["items"] if "items" in data_content else []
+            if skip_negative_qty:
+                items = [item for item in items if float(item["Qty"]) >= 0]
             for item in items:
-                qty = float(item.get("Qty", 0))
-                qty_oh = float(item.get("Qty_OH", 0))
-                stock_status = ""
-                if include_stock_status:
-                    stock_status = "现货" if qty_oh - qty >= 1 else "需要订货"
-
+                qty = float(item["Qty"]) if "Qty" in item else 0
+                qty_oh = float(item["Qty_OH"]) if "Qty_OH" in item else 0
+                stock_status = "现货" if include_stock_status and (qty_oh - qty >= 1) else "需要订货"
                 item_row = [
-                    "", "", "", "", item.get("VendorPLU", ""), item.get("VendorName", ""), item.get("Qty", ""),
+                    "", "", "", "", item["VendorPLU"] if "VendorPLU" in item else "",
+                    item["VendorName"] if "VendorName" in item else "",
+                    item["Qty"] if "Qty" in item else "",
                     "", "", "", "", "", stock_status
                 ]
                 data_rows.append(item_row)
 
+            # 添加空行分隔订单
             data_rows.append(["" for _ in range(13)])
-
+        except Exception as e:
+            print(f"提取数据失败: {str(e)}")
+            continue
     return data_rows
+
+def combine_phone_numbers(self, data_content):
+    """合并电话号码"""
+    phone_numbers = [
+        data_content["PhoneCell"] if "PhoneCell" in data_content else "",
+        data_content["PhoneHome"] if "PhoneHome" in data_content else "",
+        data_content["PhoneOffice"] if "PhoneOffice" in data_content else ""
+    ]
+    return "/".join(filter(None, phone_numbers))
+
+
 
 class DataExtractorApp(QWidget):
     def __init__(self):
