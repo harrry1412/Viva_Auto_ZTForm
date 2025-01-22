@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont, QIcon
 from openpyxl import Workbook
-from dataProcessor import DataProcessor  # 引入 DataProcessor
+from dataProcessor import DataProcessor
 import requests
 import os
 import json
@@ -53,6 +53,11 @@ class DataExtractorApp(QWidget):
         self.login_button = QPushButton("登录")
         self.login_button.clicked.connect(self.on_login_click)
         layout.addWidget(self.login_button)
+
+        # 登录状态文本（初始隐藏）
+        self.login_status_label = QLabel("登录成功！")
+        self.login_status_label.setVisible(False)
+        layout.addWidget(self.login_status_label)
 
         # 模式选择
         self.mode_group = QButtonGroup(self)
@@ -156,6 +161,8 @@ class DataExtractorApp(QWidget):
                 return
 
             self.session = self.processor.get_authenticated_session(login_url)
+            self.login_button.setVisible(False)  # 隐藏登录按钮
+            self.login_status_label.setVisible(True)  # 显示登录成功文本
             QMessageBox.information(self, "提示", "登录成功！您可以继续进行数据解析。")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"登录失败: {str(e)}")
