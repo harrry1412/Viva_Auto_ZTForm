@@ -5,9 +5,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QDate
 from PyQt5.QtGui import QFont, QIcon
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from dataProcessor import DataProcessor
-import requests
 import os
 import json
 import re
@@ -76,23 +75,26 @@ class DataExtractorApp(QWidget):
         layout.addWidget(self.date_mode_button)
         layout.addWidget(self.number_mode_button)
 
-        self.date_mode_button.toggled.connect(self.update_input_fields)
+        self.date_mode_button.toggled.connect(self.update_mode)
+        self.number_mode_button.toggled.connect(self.update_mode)
 
         # 日期输入
         self.target_date_input = QDateEdit()
         self.target_date_input.setCalendarPopup(True)
         self.target_date_input.setDate(QDate.currentDate())
+        self.target_date_input.dateChanged.connect(self.update_output_filename)
 
         # 单号输入
-        self.target_number_input = QLineEdit(self.fetch_default_order_number())
+        self.target_number_input = QLineEdit()
         self.target_number_input.setVisible(False)
+        self.target_number_input.textChanged.connect(self.update_output_filename)
 
         layout.addWidget(QLabel("目标日期或单号:"))
         layout.addWidget(self.target_date_input)
         layout.addWidget(self.target_number_input)
 
         # 输出文件名
-        self.output_filename_input = QLineEdit("Viva自提单生成")
+        self.output_filename_input = QLineEdit()
         layout.addWidget(QLabel("输出文件名:"))
         layout.addWidget(self.output_filename_input)
 
@@ -122,10 +124,40 @@ class DataExtractorApp(QWidget):
         self.generate_button.clicked.connect(self.on_generate_click)
         layout.addWidget(self.generate_button)
 
+        # 设置默认输出文件名
+        self.update_output_filename()
+
         # 禁用所有控件，除了登录页面 URL 和登录按钮
         self.toggle_controls(False)
 
         self.setLayout(layout)
+
+    def update_mode(self):
+        """根据模式切换显示目标日期或单号输入框"""
+        if self.date_mode_button.isChecked():
+            # 显示日期输入框，隐藏单号输入框
+            self.target_date_input.setVisible(True)
+            self.target_number_input.setVisible(False)
+        elif self.number_mode_button.isChecked():
+            # 显示单号输入框，隐藏日期输入框
+            self.target_date_input.setVisible(False)
+            self.target_number_input.setVisible(True)
+
+        # 更新输出文件名
+        self.update_output_filename()
+
+    def update_output_filename(self):
+        """根据模式和目标值更新输出文件名"""
+        if self.date_mode_button.isChecked():
+            # 按日期生成
+            selected_date = self.target_date_input.date().toString("yyyy-MM-dd")
+            self.output_filename_input.setText(f"Viva自提单生成H_{selected_date}")
+        elif self.number_mode_button.isChecked():
+            # 按单号生成
+            entered_number = self.target_number_input.text()
+            self.output_filename_input.setText(f"Viva自提单生成H_{entered_number}")
+
+
 
     def toggle_controls(self, enable):
         """启用或禁用所有控件（除了登录页面 URL 和登录按钮）"""
@@ -295,6 +327,63 @@ class DataExtractorApp(QWidget):
         for row in data_rows:
             ws.append(row)
         wb.save(filename)
+
+        self.process_excel(filename)
+
+    def process_excel(self, file_path):
+        """处理 Excel 文件"""
+        # 读取源文件
+        source_wb = load_workbook(file_path)
+        source_ws = source_wb.active
+
+        # 创建新工作簿
+        new_wb = Workbook()
+        new_ws = new_wb.active
+        new_ws.delete_rows(1, new_ws.max_row)  # 清空默认生成的空行
+
+        # ------------------------- 规则1：AB列直接复制 -------------------------
+        for row in source_ws.iter_rows():
+            new_row_idx = row[0].row  # 行号保持不变
+            # A列
+            new_ws.cell(row=new_row_idx, column=1, value=row[0].value)
+            # B列
+            new_ws.cell(row=new_row_idx, column=2, value=row[1].value)
+
+        # ------------------------- 规则2：CDE列行号-1复制到CDE列 -------------------------
+        for row in source_ws.iter_rows(min_row=2):  # 从第2行开始处理
+            source_row = row[0].row
+            target_row = source_row - 1
+            # C列
+            new_ws.cell(row=target_row, column=3, value=row[2].value)
+            # D列
+            new_ws.cell(row=target_row, column=4, value=row[3].value)
+            # E列
+            new_ws.cell(row=target_row, column=5, value=row[4].value)
+
+        # ------------------------- 规则3：F列直接复制 -------------------------
+        for row in source_ws.iter_rows():
+            new_ws.cell(row=row[0].row, column=6, value=row[5].value)
+
+        # ------------------------- 规则4：G列行号+1复制到F列（不覆盖） -------------------------
+        for row in source_ws.iter_rows():
+            source_row = row[0].row
+            target_row = source_row + 1
+            source_g_value = row[6].value if len(row) > 6 else None
+            # 检查目标F列是否为空
+            if source_g_value is not None and new_ws.cell(row=target_row, column=6).value is None:
+                new_ws.cell(row=target_row, column=6, value=source_g_value)
+
+        # ------------------------- 规则5：剩余列（H及之后）列号-1复制 -------------------------
+        max_col = source_ws.max_column
+        for col_idx in range(8, max_col + 1):  # 从H列（索引8）开始
+            for row in source_ws.iter_rows():
+                source_value = row[col_idx - 1].value  # openpyxl列索引从0开始
+                new_col = col_idx - 1  # 列号-1（如H→G）
+                new_ws.cell(row=row[0].row, column=new_col, value=source_value)
+
+        # 保存文件（覆盖原文件）
+        new_wb.save(file_path)
+        print(f"处理完成！文件已保存至：{file_path}")
 
     def get_icon_path(self):
         """获取图标路径"""
