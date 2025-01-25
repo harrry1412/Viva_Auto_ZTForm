@@ -331,20 +331,21 @@ class DataExtractorApp(QWidget):
 
         self.process_excel(filename)
 
-    def process_excel(file_path):
+    def process_excel(self, file_path):
         """
-        处理 Excel 文件，将 "电话" 列的值移动到左下一格的 "客户姓名" 列，并删除 "电话" 列。
+        处理 Excel 文件，将 "电话" 列的值向左下一格移动，并删除 "电话" 列。
         处理完成后直接覆盖原文件。
 
         :param file_path: str, 输入的 Excel 文件路径
         """
-        # 读取Excel表格
+
+        # 读取 Excel 文件
         df = pd.read_excel(file_path)
 
-        # 遍历每一行，将 "电话" 列的值移动到左下一格
+        # 遍历 "电话" 列的值并将其向左下一格移动
         for index in range(len(df) - 1):  # 遍历到倒数第二行
             if pd.notna(df.loc[index, '电话']):  # 如果当前行的 "电话" 列有值
-                df.loc[index + 1, '客户姓名'] = df.loc[index, '电话']  # 将值移动到下一行的 "客户姓名" 列
+                df.loc[index + 1, '顾客姓名'] = df.loc[index, '电话']  # 向下一行 "顾客姓名" 列移动值
 
         # 删除 "电话" 列
         df.drop(columns=['电话'], inplace=True)
@@ -352,6 +353,7 @@ class DataExtractorApp(QWidget):
         # 保存结果覆盖原文件
         df.to_excel(file_path, index=False)
         print(f'文件已处理并覆盖保存为 {file_path}')
+
 
     def get_icon_path(self):
         """获取图标路径"""
