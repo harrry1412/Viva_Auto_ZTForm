@@ -15,7 +15,7 @@ import re
 # 全局常量
 CONFIG_FILENAME = "config.json"
 ICON_FILENAME = "app_icon.png"
-APP_NAME = "VIVA自提单自动生成工具 V2.1.0"
+APP_NAME = "VIVA自提单自动生成工具 V2.2.0"
 APP_TITLE = f"{APP_NAME} - Designed by Harry & Zeror"
 
 
