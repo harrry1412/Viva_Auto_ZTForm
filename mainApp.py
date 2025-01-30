@@ -23,6 +23,7 @@ class DataExtractorApp(QWidget):
     def __init__(self):
         super().__init__()
         self.config = self.load_config()  # 加载配置文件
+        self.dynamic_output_name = self.config.get("dynamic_output_name", 0)
         self.processor = DataProcessor()  # 实例化数据处理类
         self.session = None  # 全局 requests.Session 对象，用于复用 cookie
         self.init_ui()
@@ -84,12 +85,14 @@ class DataExtractorApp(QWidget):
         self.target_date_input = QDateEdit()
         self.target_date_input.setCalendarPopup(True)
         self.target_date_input.setDate(QDate.currentDate())
-        self.target_date_input.dateChanged.connect(self.update_output_filename)
+        if self.dynamic_output_name:
+            self.target_date_input.dateChanged.connect(self.update_output_filename)
 
         # 单号输入
         self.target_number_input = QLineEdit()
         self.target_number_input.setVisible(False)
-        self.target_number_input.textChanged.connect(self.update_output_filename)
+        if self.dynamic_output_name:
+            self.target_number_input.textChanged.connect(self.update_output_filename)
 
         layout.addWidget(QLabel("目标日期或单号:"))
         layout.addWidget(self.target_date_input)
@@ -127,7 +130,10 @@ class DataExtractorApp(QWidget):
         layout.addWidget(self.generate_button)
 
         # 设置默认输出文件名
-        self.update_output_filename()
+        if self.dynamic_output_name:
+            self.update_output_filename()
+        else:
+            self.output_filename_input.setText("Viva自提单生成H")
 
         # 禁用所有控件，除了登录页面 URL 和登录按钮
         self.toggle_controls(False)
@@ -146,7 +152,8 @@ class DataExtractorApp(QWidget):
             self.target_number_input.setVisible(True)
 
         # 更新输出文件名
-        self.update_output_filename()
+        if self.dynamic_output_name:
+            self.update_output_filename()
 
     def update_output_filename(self):
         """根据模式和目标值更新输出文件名"""

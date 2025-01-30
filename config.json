@@ -1,5 +1,6 @@
 {
     "login_url": "http://34.95.11.166/sales/account/login",
     "url1": "http://34.95.11.166/sales/document/index?page=1",
-    "base_url": "http://34.95.11.166/sales/document/document?id="
+    "base_url": "http://34.95.11.166/sales/document/document?id=",
+	"dynamic_output_name": 1
 }
